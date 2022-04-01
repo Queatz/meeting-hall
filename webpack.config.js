@@ -11,6 +11,10 @@ module.exports = {
     },
     resolve: {
         extensions: [".tsx", ".ts", ".js"],
+        fallback: {
+            fs: false,
+            path: false, // require.resolve("path-browserify")
+        },
     },
     devServer: {
         host: "0.0.0.0",
