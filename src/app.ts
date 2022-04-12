@@ -4,20 +4,24 @@ import '@babylonjs/loaders/glTF'
 import {
   AbstractMesh,
   AnimationGroup,
-  ArcRotateCamera, ArcRotateCameraMouseWheelInput,
+  ArcRotateCamera,
+  ArcRotateCameraMouseWheelInput,
   CascadedShadowGenerator,
-  Color3, Color4, ColorCorrectionPostProcess,
+  Color3,
+  Color4, ColorCorrectionPostProcess, CubeTexture,
   DefaultRenderingPipeline,
   DirectionalLight,
   Engine,
   HemisphericLight,
-  Mesh, PointerInput,
+  Mesh, MeshBuilder,
+  MotionBlurPostProcess, PBRMaterial, PhotoDome,
   Quaternion,
   Ray,
   Scene,
-  SceneLoader,
+  SceneLoader, ShadowGenerator,
   Skeleton,
-  Vector3
+  SSAO2RenderingPipeline, StandardMaterial, Texture, TonemappingOperator,
+  Vector3, VolumetricLightScatteringPostProcess
 } from '@babylonjs/core'
 import { PlayerInput } from "./input";
 
@@ -30,6 +34,8 @@ class App {
     document.body.appendChild(canvas)
 
     setTimeout(() => canvas.focus())
+
+    const quality = 0
 
     const engine = new Engine(canvas, true)
     const scene = new Scene(engine)
@@ -49,7 +55,8 @@ class App {
     scene.fogStart = 500
     scene.fogEnd = 1000
     scene.clearColor = new Color4(.5, .667, 1)
-    scene.clearColor = new Color4(1, .7, .5)
+    scene.clearColor = new Color4(.667, .822, 1)
+    // scene.clearColor = new Color4(1, .7, .5) // evening
     scene.ambientColor = new Color3(scene.clearColor.r, scene.clearColor.g, scene.clearColor.b)
     scene.fogColor = new Color3(scene.clearColor.r, scene.clearColor.g, scene.clearColor.b)
 
@@ -58,14 +65,16 @@ class App {
     camera.upperRadiusLimit = 8
     camera.lowerRadiusLimit = 2
     camera.fov = 1.333
+    camera.minZ = 0.1
     camera.maxZ = 1000
     ;(camera.inputs.attached['mousewheel'] as ArcRotateCameraMouseWheelInput).wheelPrecision = 64
 
     const light1: HemisphericLight = new HemisphericLight('light1', new Vector3(1, 1, 0), scene)
     light1.specular = Color3.Black()
     light1.diffuse = scene.ambientColor
-    light1.intensity = .5
-    const sun: DirectionalLight = new DirectionalLight('Sun', new Vector3(-.5, -1, 0).normalize(), scene)
+    light1.intensity = .6
+    const sun: DirectionalLight = new DirectionalLight('Sun', new Vector3(-.75, -.5, 0).normalize(), scene)
+    sun.intensity = 1.2
     sun.shadowMinZ = camera.minZ
     sun.shadowMaxZ = camera.maxZ
 
@@ -74,56 +83,65 @@ class App {
     const pipeline = new DefaultRenderingPipeline('Default Pipeline', true, scene, [ camera ])
     pipeline.samples = 4
     pipeline.fxaaEnabled = true
-    pipeline.bloomEnabled = true
-    pipeline.bloomThreshold = 0.75
-    pipeline.bloomWeight = 0.5
-    pipeline.bloomKernel = 32
-    pipeline.bloomScale = 1
-    pipeline.imageProcessingEnabled = true
-    pipeline.grainEnabled = true
-    pipeline.grain.intensity = 7.5
-    pipeline.grain.animated = true
-    pipeline.imageProcessing.vignetteEnabled = true
-    pipeline.imageProcessing.vignetteWeight = 7.5
+
+    if (quality >= 1) {
+      pipeline.bloomEnabled = true
+      pipeline.bloomThreshold = 0.75
+      pipeline.bloomWeight = 0.75
+      pipeline.bloomKernel = 16
+      pipeline.bloomScale = .5
+    }
+    // pipeline.imageProcessingEnabled = true
+    // pipeline.grainEnabled = true
+    // pipeline.grain.intensity = 7.5
+    // pipeline.grain.animated = true
+    // pipeline.imageProcessing.vignetteEnabled = true
+    // pipeline.imageProcessing.vignetteWeight = 7.5
     // pipeline.imageProcessing.exposure = 1.5
     // pipeline.imageProcessing.contrast = .85
     // pipeline.imageProcessing.toneMappingEnabled = true
     // pipeline.imageProcessing.toneMappingType = TonemappingOperator.Photographic
 
-    // const skybox = MeshBuilder.CreateBox('skyBox', { size: 900, sideOrientation: Mesh.BACKSIDE}, scene)
-    // skybox.applyFog = false
-    // skybox.material = new SkyMaterial()
+    const skybox = MeshBuilder.CreateSphere('skyBox', { diameter: 900, segments: 16, sideOrientation: Mesh.BACKSIDE }, scene)
+    const skyboxMaterial = new StandardMaterial('skyBox', scene)
+    skybox.applyFog = false
+    skyboxMaterial.emissiveTexture = new Texture('assets/skybox.png', scene, undefined, false, Texture.NEAREST_SAMPLINGMODE)
+    skyboxMaterial.emissiveTexture.coordinatesMode = Texture.EQUIRECTANGULAR_MODE
+    skyboxMaterial.disableLighting = true
+    skyboxMaterial.diffuseColor = new Color3(0, 0, 0)
+    skyboxMaterial.specularColor = new Color3(0, 0, 0)
+    skybox.material = skyboxMaterial
 
-    // const godrays = new VolumetricLightScatteringPostProcess(
-    //   'godrays',
-    //   1.0,
-    //   camera,
-    //   MeshBuilder.CreateSphere('godrays',
-    //     {
-    //       segments: 8,
-    //       diameter: 20
-    //     },
-    //     scene),
-    //   80,
-    //   Texture.BILINEAR_SAMPLINGMODE,
-    //   engine,
-    //   false,
-    //   scene
-    // )
-    // godrays.mesh.applyFog = false
-    // godrays.exposure = 0.1
-    // godrays.decay = 0.96815
-    // godrays.weight = 0.98767
-    // godrays.density = 0.996
-    //
-    // godrays.mesh.position = sun.direction.negate().multiply(Vector3.One().scale(200))
-    //
-    // const godrayMaterial = new StandardMaterial('Godray Material', scene)
-    // godrayMaterial.emissiveColor = Color3.White()
-    // godrayMaterial.diffuseColor = Color3.Black()
-    // godrays.mesh.material = godrayMaterial
+    const godrays = new VolumetricLightScatteringPostProcess(
+      'godrays',
+      1.0,
+      camera,
+      MeshBuilder.CreateSphere('godrays',
+        {
+          segments: 8,
+          diameter: 15
+        },
+        scene),
+      64,
+      Texture.BILINEAR_SAMPLINGMODE,
+      engine,
+      false,
+      scene
+    )
+    godrays.mesh.applyFog = false
+    godrays.exposure = .25
+    // godrays.decay = 0.987
+    // godrays.weight =
+    // godrays.density = 0.992
+    godrays.mesh.position = sun.direction.negate().multiply(Vector3.One().scale(100))
 
-    // this.godrays.excludedMeshes = [ this.skybox ]
+    const godrayMaterial = new StandardMaterial('Godray Material', scene)
+    godrayMaterial.emissiveColor = Color3.White()
+    godrayMaterial.diffuseColor = Color3.Black()
+    godrays.mesh.material = godrayMaterial
+    godrays.mesh.material.disableDepthWrite = true
+
+    godrays.excludedMeshes = [ skybox ]
 
     // const lutPostProcess = new ColorCorrectionPostProcess(
     //   'Color Correction',
@@ -132,13 +150,32 @@ class App {
     //   camera
     // )
 
-    const shadowGenerator = new CascadedShadowGenerator(1024, sun)
+    if (quality >= 1) {
+      const ssao = new SSAO2RenderingPipeline('ssaopipeline', scene, .667, [camera])
+      ssao.totalStrength = .75
+      ssao.samples = 12
+      ssao.radius = 1
+
+      const motionBlur = new MotionBlurPostProcess(
+        "Motion Blur Post Process",
+        scene,
+        1,
+        camera
+      )
+      motionBlur.isObjectBased = false
+      motionBlur.motionBlurSamples = 6
+      motionBlur.motionStrength = .125
+    }
+
+    const shadowGenerator = new CascadedShadowGenerator(1024 * .75, sun)
     shadowGenerator.transparencyShadow = true
-    shadowGenerator.enableSoftTransparentShadow = true
+    // shadowGenerator.enableSoftTransparentShadow = true
+    // shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_LOW
     shadowGenerator.lambda = .9
     shadowGenerator.bias = .005
     shadowGenerator.normalBias = .05
     shadowGenerator.stabilizeCascades = true
+    shadowGenerator.shadowMaxZ = camera.maxZ / 2
     shadowGenerator.splitFrustum()
 
     // End post-processing
@@ -151,8 +188,14 @@ class App {
       })
 
       result.meshes.forEach(mesh => {
+        if (mesh.material instanceof PBRMaterial) {
+          mesh.material.specularIntensity = Math.min(mesh.material.specularIntensity, .1)
+        }
+
         shadowGenerator.addShadowCaster(mesh)
+
         mesh.checkCollisions = true
+
         try {
           mesh.receiveShadows = true
         } catch (ignored) {}
@@ -180,6 +223,10 @@ class App {
       playerAnimations = result.animationGroups
 
       result.meshes.forEach(mesh => {
+        if (mesh.material instanceof PBRMaterial) {
+          mesh.material.specularIntensity = Math.min(mesh.material.specularIntensity, .1)
+        }
+
         shadowGenerator.addShadowCaster(mesh)
 
         try {
@@ -375,6 +422,8 @@ class App {
       if (cameraGround.hit) {
         camera.setPosition(new Vector3(camera.position.x, cameraGround.pickedPoint!.y + 1, camera.position.z))
       }
+
+      skybox.rotateAround(Vector3.Zero(), Vector3.Up(), scene.deltaTime * 0.0000125)
     })
 
     window.addEventListener('resize', () => {
