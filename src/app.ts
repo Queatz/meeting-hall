@@ -4,14 +4,14 @@ import '@babylonjs/loaders/glTF'
 import {
   AbstractMesh,
   AnimationGroup,
-  ArcRotateCamera,
+  ArcRotateCamera, ArcRotateCameraMouseWheelInput,
   CascadedShadowGenerator,
-  Color3, Color4,
+  Color3, Color4, ColorCorrectionPostProcess,
   DefaultRenderingPipeline,
   DirectionalLight,
   Engine,
   HemisphericLight,
-  Mesh,
+  Mesh, PointerInput,
   Quaternion,
   Ray,
   Scene,
@@ -57,8 +57,9 @@ class App {
     camera.attachControl(canvas, true)
     camera.upperRadiusLimit = 8
     camera.lowerRadiusLimit = 2
-    camera.fov = 1
+    camera.fov = 1.333
     camera.maxZ = 1000
+    ;(camera.inputs.attached['mousewheel'] as ArcRotateCameraMouseWheelInput).wheelPrecision = 64
 
     const light1: HemisphericLight = new HemisphericLight('light1', new Vector3(1, 1, 0), scene)
     light1.specular = Color3.Black()
@@ -84,7 +85,7 @@ class App {
     pipeline.grain.animated = true
     pipeline.imageProcessing.vignetteEnabled = true
     pipeline.imageProcessing.vignetteWeight = 7.5
-    // pipeline.imageProcessing.exposure = 1
+    // pipeline.imageProcessing.exposure = 1.5
     // pipeline.imageProcessing.contrast = .85
     // pipeline.imageProcessing.toneMappingEnabled = true
     // pipeline.imageProcessing.toneMappingType = TonemappingOperator.Photographic
@@ -145,8 +146,13 @@ class App {
     SceneLoader.ImportMeshAsync('', '/assets/', 'forest.glb', scene).then(result => {
       ground = result.meshes.find(x => x.name === 'Plane.015')!
 
+      result.animationGroups.forEach(anim => {
+        anim.start(true)
+      })
+
       result.meshes.forEach(mesh => {
         shadowGenerator.addShadowCaster(mesh)
+        mesh.checkCollisions = true
         try {
           mesh.receiveShadows = true
         } catch (ignored) {}
@@ -157,6 +163,9 @@ class App {
       player = result.meshes[0]
       player.position.y += 1
       player.position.x += 3
+
+      player.collisionRetryCount = 5
+      player.ellipsoidOffset = new Vector3(0, 1.05, 0)
 
       const target = new Mesh('Camera Target')
       target.setParent(player)
@@ -198,11 +207,11 @@ class App {
         return
       }
 
-      const s = 0.005 * scene.deltaTime * (input.key('Shift') ? 1 : 0.5)
+      const s = 0.005 * scene.deltaTime * (input.key('Shift') || input.button(2) ? 1 : 0.5)
 
       let x = 0, z = 0
 
-      if (input.key('w')) {
+      if (input.key('w') || input.button(0) || input.button(2)) {
         z = s
       }
 
@@ -228,10 +237,10 @@ class App {
         const right = camera.getDirection(Vector3.Right()).multiply(new Vector3(1, 0, 1)).normalize().scale(x)
         const movement = forward.add(right)
 
-        player.rotationQuaternion = Quaternion.Slerp(player.rotationQuaternion!, Quaternion.FromLookDirectionLH(movement.normalizeToNew(), player.up), .5)
-        player.position.addInPlace(movement)
+        player.rotationQuaternion = Quaternion.Slerp(player.rotationQuaternion!, Quaternion.FromLookDirectionLH(movement.normalizeToNew(), player.up), .125)
+        player.moveWithCollisions(movement)
 
-        playerAnimation = input.key('Shift') ? 'Run' : 'Walk'
+        playerAnimation = input.key('Shift') || input.button(2) ? 'Run' : 'Walk'
       } else {
         playerAnimation = 'Idle'
       }
@@ -352,7 +361,7 @@ class App {
       const gravity = new Ray(player.position, Vector3.Up()).intersectsMesh(ground)
 
       if (!gravity.hit) {
-        player.position.y -= 0.005 * scene.deltaTime
+        player.moveWithCollisions(new Vector3(0, -0.005 * scene.deltaTime, 0))
       }
 
       const ray = new Ray(player.position, Vector3.Up()).intersectsMesh(ground)
