@@ -1,4 +1,4 @@
-import {Scene, KeyboardEventTypes, PointerEventTypes} from '@babylonjs/core'
+import { Scene, KeyboardEventTypes, PointerEventTypes } from '@babylonjs/core'
 
 export class PlayerInput {
 
