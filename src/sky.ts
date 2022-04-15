@@ -1,4 +1,4 @@
-import {AbstractMesh, Color3, Mesh, MeshBuilder, Scene, StandardMaterial, Texture, Vector3} from "@babylonjs/core";
+import { AbstractMesh, Color3, Mesh, MeshBuilder, Scene, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
 
 export class Sky {
 

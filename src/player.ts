@@ -1,7 +1,6 @@
-import { World} from "./world";
+import { World } from "./world";
 import {
   AbstractMesh,
-  AnimationGroup,
   Mesh,
   PBRMaterial,
   Quaternion, Ray,
@@ -10,7 +9,8 @@ import {
   Skeleton,
   Vector3
 } from "@babylonjs/core";
-import { PlayerInput} from "./input";
+import { PlayerInput } from "./input";
+import { Animations } from "./animations";
 
 export class Player {
 
@@ -18,11 +18,8 @@ export class Player {
 
   private input = new PlayerInput(this.scene)
   private skeleton!: Skeleton
-  private playerAnimations!: Array<AnimationGroup>
-  private playerAnimation = 'Idle'
-  private idleWeight = 1
-  private walkWeight = 0
-  private runWeight = 0
+
+  private playerAnimations = new Animations()
 
   get ready() {
     return !!this.player
@@ -49,7 +46,7 @@ export class Player {
       this.world.camera.setPosition(this.player.position.add(new Vector3(0, 3, -6)))
 
       this.skeleton = result.skeletons[0]!
-      this.playerAnimations = result.animationGroups
+      this.playerAnimations.load(result.animationGroups)
 
       result.meshes.forEach(mesh => {
         this.world.mirror.renderList!.push(mesh)
@@ -102,123 +99,12 @@ export class Player {
       this.player.rotationQuaternion = Quaternion.Slerp(this.player.rotationQuaternion!, Quaternion.FromLookDirectionLH(movement.normalizeToNew(), this.player.up), .125)
       this.player.moveWithCollisions(movement)
 
-      this.playerAnimation = this.input.key('Shift') || this.input.button(2) ? 'Run' : 'Walk'
+      this.playerAnimations.set(this.input.key('Shift') || this.input.button(2) ? 'Run' : 'Walk')
     } else {
-      this.playerAnimation = 'Idle'
+      this.playerAnimations.set('Idle')
     }
 
-    const run = this.playerAnimations.find(x => x.name === 'Run')!
-    const walk = this.playerAnimations.find(x => x.name === 'Walk')!
-    const idle = this.playerAnimations.find(x => x.name === 'Idle')!
-
-    const as = 0.0125
-
-    if (this.playerAnimation === 'Run') {
-      if (run.isPlaying) {
-        if (this.runWeight < 1) {
-          this.runWeight += Math.min(this.scene.deltaTime * as, 1)
-          run.setWeightForAllAnimatables(this.runWeight)
-        }
-      } else {
-        this.runWeight = 0
-        run.start(true)
-        run.setWeightForAllAnimatables(this.runWeight)
-      }
-
-      if (walk.isPlaying) {
-        if (this.walkWeight > 0) {
-          this.walkWeight -= Math.max(this.scene.deltaTime * as, 0)
-
-          if (this.walkWeight === 0) {
-            walk.stop()
-          } else {
-            walk.setWeightForAllAnimatables(this.walkWeight)
-          }
-        }
-      }
-
-      if (idle.isPlaying) {
-        if (this.idleWeight > 0) {
-          this.idleWeight -= Math.max(this.scene.deltaTime * as, 0)
-
-          if (this.idleWeight === 0) {
-            idle.stop()
-          } else {
-            idle.setWeightForAllAnimatables(this.idleWeight)
-          }
-        }
-      }
-    } else if (this.playerAnimation === 'Walk') {
-      if (walk.isPlaying) {
-        if (this.walkWeight < 1) {
-          this.walkWeight += Math.min(this.scene.deltaTime * as, 1)
-          walk.setWeightForAllAnimatables(this.walkWeight)
-        }
-      } else {
-        this.walkWeight = 0
-        walk.start(true)
-        walk.setWeightForAllAnimatables(this.walkWeight)
-      }
-
-      if (idle.isPlaying) {
-        if (this.idleWeight > 0) {
-          this.idleWeight -= Math.max(this.scene.deltaTime * as, 0)
-
-          if (this.idleWeight === 0) {
-            idle.stop()
-          } else {
-            idle.setWeightForAllAnimatables(this.idleWeight)
-          }
-        }
-      }
-
-      if (run.isPlaying) {
-        if (this.runWeight > 0) {
-          this.runWeight -= Math.max(this.scene.deltaTime * as, 0)
-
-          if (this.runWeight === 0) {
-            run.stop()
-          } else {
-            run.setWeightForAllAnimatables(this.runWeight)
-          }
-        }
-      }
-    } else if (this.playerAnimation === 'Idle') {
-      if (idle.isPlaying) {
-        if (this.idleWeight < 1) {
-          this.idleWeight += Math.min(this.scene.deltaTime * as, 1)
-          idle.setWeightForAllAnimatables(this.idleWeight)
-        }
-      } else {
-        this.idleWeight = 0
-        idle.start(true)
-        idle.setWeightForAllAnimatables(this.idleWeight)
-      }
-
-      if (walk.isPlaying) {
-        if (this.walkWeight > 0) {
-          this.walkWeight -= Math.max(this.scene.deltaTime * as, 0)
-
-          if (this.walkWeight === 0) {
-            walk.stop()
-          } else {
-            walk.setWeightForAllAnimatables(this.walkWeight)
-          }
-        }
-      }
-
-      if (run.isPlaying) {
-        if (this.runWeight > 0) {
-          this.runWeight -= Math.max(this.scene.deltaTime * as, 0)
-
-          if (this.runWeight === 0) {
-            run.stop()
-          } else {
-            run.setWeightForAllAnimatables(this.runWeight)
-          }
-        }
-      }
-    }
+    this.playerAnimations.update(this.scene.deltaTime)
 
     const gravity = new Ray(this.player.position, Vector3.Up()).intersectsMesh(this.world.ground)
 
