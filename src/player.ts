@@ -29,9 +29,7 @@ export class Player {
     SceneLoader.ImportMeshAsync('', '/assets/', 'girl.glb', scene).then(result => {
       this.player = result.meshes[0]
 
-      this.player.position.y += 1
-      this.player.position.x += 3
-      this.player.position.z += 140
+      this.player.position.copyFrom(this.world.startingPoint)
 
       this.player.collisionRetryCount = 5
       this.player.ellipsoidOffset = new Vector3(0, 1.05, 0)
@@ -66,7 +64,8 @@ export class Player {
   }
 
   update() {
-    const s = 0.005 * this.scene.deltaTime * (this.input.key('Shift') || this.input.button(2) ? 1 : 0.5)
+    const run = this.input.key('Shift') || this.input.button(2)
+    const s = 0.005 * this.scene.deltaTime * (this.input.key('q') ? 10 : run ? 1 : 0.5)
 
     let x = 0, z = 0
 
@@ -99,7 +98,7 @@ export class Player {
       this.player.rotationQuaternion = Quaternion.Slerp(this.player.rotationQuaternion!, Quaternion.FromLookDirectionLH(movement.normalizeToNew(), this.player.up), .125)
       this.player.moveWithCollisions(movement)
 
-      this.playerAnimations.set(this.input.key('Shift') || this.input.button(2) ? 'Run' : 'Walk')
+      this.playerAnimations.set(run ? 'Run' : 'Walk')
     } else {
       this.playerAnimations.set('Idle')
     }

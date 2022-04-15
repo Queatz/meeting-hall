@@ -3,7 +3,6 @@ import '@babylonjs/inspector'
 import '@babylonjs/loaders/glTF'
 import { Engine, Scene } from '@babylonjs/core'
 import { World } from "./world";
-import { Player } from "./player";
 
 class App {
   constructor() {
@@ -18,7 +17,6 @@ class App {
     const engine = new Engine(canvas, true)
     const scene = new Scene(engine)
     const world = new World(scene, engine, canvas)
-    const player = new Player(world, scene)
 
     // hide/show the Inspector
     window.addEventListener('keydown', (ev) => {
@@ -33,13 +31,11 @@ class App {
     })
 
     engine.runRenderLoop(() => {
-      if (!player.ready || !world.ready) {
+      if (!world.ready) {
         return
       }
 
       world.update()
-      player.update()
-
       scene.render()
     })
 

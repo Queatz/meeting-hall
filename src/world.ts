@@ -21,6 +21,7 @@ import {
 } from "@babylonjs/core";
 import { Sky } from "./sky";
 import { PostProcess } from "./postProcess";
+import { Player } from "./player";
 
 export class World {
 
@@ -29,13 +30,16 @@ export class World {
   camera: ArcRotateCamera
   shadowGenerator: CascadedShadowGenerator
   mirror: MirrorTexture
+  startingPoint: Vector3 = new Vector3(3, 1, 140)
 
   private skybox: Sky
   private postProcess: PostProcess
   private clearColor: Color4
 
+  private player!: Player
+
   get ready() {
-    return !!this.ground
+    return !!this.ground && this.player?.ready
   }
 
   constructor(private scene: Scene, engine: Engine, canvas: HTMLCanvasElement) {
@@ -89,7 +93,15 @@ export class World {
     this.mirror.renderList!.push(this.skybox.skybox)
 
     SceneLoader.ImportMeshAsync('', '/assets/', 'forest.glb', scene).then(result => {
+      this.player = new Player(this, scene)
+
       this.ground = result.meshes.find(x => x.name === 'Plane.015')! // Ground
+
+      const startingPoint = result.transformNodes.find(x => x.name === 'Starting point')
+
+      if (startingPoint) {
+        this.startingPoint.copyFrom(startingPoint.position)
+      }
 
       result.animationGroups.forEach(anim => {
         anim.start(true)
@@ -99,24 +111,24 @@ export class World {
         if (mesh.name === 'Plane.001') { // water
           this.water = mesh
 
-          NodeMaterial.ParseFromFileAsync("Water", "assets/water.json", scene).then(material => {
-            material.backFaceCulling = false
-
-            const normalMap = material.getBlockByName('Texture') as TextureBlock
-            const reflection = material.getBlockByName('Reflection') as ReflectionBlock
-            normalMap.texture = new Texture('assets/waterbump.png', scene, undefined, undefined, Texture.LINEAR_LINEAR_MIPLINEAR)
-            normalMap.texture.uScale = 2
-            normalMap.texture.vScale = 2
-            normalMap.texture.level = 1
-            reflection.texture = this.mirror
-            reflection.texture = new Texture('assets/skybox.png', scene)
-            reflection.texture.coordinatesMode = Texture.EQUIRECTANGULAR_MODE
-            this.water.material = material
-
-            this.water.material!.onBindObservable.add(() => {
-              this.mirror.mirrorPlane = Plane.FromPositionAndNormal(this.water.position, Vector3.Down())
-            })
-          })
+          // NodeMaterial.ParseFromFileAsync("Water", "assets/water.json", scene).then(material => {
+          //   material.backFaceCulling = false
+          //
+          //   const normalMap = material.getBlockByName('Texture') as TextureBlock
+          //   const reflection = material.getBlockByName('Reflection') as ReflectionBlock
+          //   normalMap.texture = new Texture('assets/waterbump.png', scene, undefined, undefined, Texture.LINEAR_LINEAR_MIPLINEAR)
+          //   normalMap.texture.uScale = 2
+          //   normalMap.texture.vScale = 2
+          //   normalMap.texture.level = 1
+          //   reflection.texture = this.mirror
+          //   reflection.texture = new Texture('assets/skybox.png', scene)
+          //   reflection.texture.coordinatesMode = Texture.EQUIRECTANGULAR_MODE
+          //   this.water.material = material
+          //
+          //   this.water.material!.onBindObservable.add(() => {
+          //     this.mirror.mirrorPlane = Plane.FromPositionAndNormal(this.water.position, Vector3.Down())
+          //   })
+          // })
         } else {
           if (mesh.material instanceof PBRMaterial) {
             mesh.material.specularIntensity = Math.min(mesh.material.specularIntensity, .1)
@@ -135,6 +147,8 @@ export class World {
   }
 
   update() {
+    this.player.update()
+
     const cameraGround = new Ray(this.camera.position, Vector3.Down(), 1).intersectsMesh(this.ground)
 
     if (cameraGround.hit) {

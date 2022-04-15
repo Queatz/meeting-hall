@@ -6,8 +6,8 @@ export class Sky {
 
   constructor(private scene: Scene) {
     this.skybox = MeshBuilder.CreateSphere('skyBox', { diameter: 900, segments: 16, sideOrientation: Mesh.BACKSIDE }, scene)
-    const skyboxMaterial = new StandardMaterial('skyBox', scene)
     this.skybox.applyFog = false
+    const skyboxMaterial = new StandardMaterial('skyBox', scene)
     skyboxMaterial.emissiveTexture = new Texture('assets/skybox.png', scene, undefined, false, Texture.NEAREST_SAMPLINGMODE)
     skyboxMaterial.emissiveTexture.coordinatesMode = Texture.EQUIRECTANGULAR_MODE
     skyboxMaterial.disableLighting = true
@@ -17,6 +17,7 @@ export class Sky {
   }
 
   update() {
+    if (this.scene.deltaTime)
     this.skybox.rotateAround(Vector3.Zero(), Vector3.Up(), this.scene.deltaTime * 0.0000125)
   }
 }
