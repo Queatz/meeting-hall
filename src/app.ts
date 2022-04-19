@@ -3,6 +3,7 @@ import '@babylonjs/inspector'
 import '@babylonjs/loaders/glTF'
 import { Engine, Scene } from '@babylonjs/core'
 import { World } from "./world";
+import { Ui } from "./ui";
 
 class App {
   constructor() {
@@ -17,6 +18,8 @@ class App {
     const engine = new Engine(canvas, true)
     const scene = new Scene(engine)
     const world = new World(scene, engine, canvas)
+
+    const ui = new Ui(engine)
 
     // hide/show the Inspector
     window.addEventListener('keydown', (ev) => {
@@ -37,6 +40,7 @@ class App {
 
       world.update()
       scene.render()
+      ui.render()
     })
 
     window.addEventListener('resize', () => {

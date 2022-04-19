@@ -64,6 +64,10 @@ export class Player {
   }
 
   update() {
+    if (this.input.key('Escape')) {
+      this.player.position.copyFrom(this.world.startingPoint)
+    }
+
     const run = this.input.key('Shift') || this.input.button(2)
     const s = 0.005 * this.scene.deltaTime * (this.input.key('q') ? 10 : run ? 1 : 0.5)
 

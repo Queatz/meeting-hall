@@ -9,14 +9,10 @@ import {
   Engine,
   HemisphericLight,
   MirrorTexture,
-  NodeMaterial,
   PBRMaterial,
-  Plane, Ray,
-  ReflectionBlock,
+  Ray,
   Scene,
   SceneLoader,
-  Texture,
-  TextureBlock,
   Vector3
 } from "@babylonjs/core";
 import { Sky } from "./sky";
@@ -37,6 +33,7 @@ export class World {
   private clearColor: Color4
 
   private player!: Player
+  private meshes!: Array<AbstractMesh>;
 
   get ready() {
     return !!this.ground && this.player?.ready
@@ -58,8 +55,8 @@ export class World {
 
     this.camera = new ArcRotateCamera('Camera', Math.PI / 2, Math.PI / 2, 2, Vector3.Zero(), scene)
     this.camera.attachControl(canvas, true)
-    this.camera.upperRadiusLimit = 8
-    this.camera.lowerRadiusLimit = 2
+    this.camera.upperRadiusLimit = 10
+    this.camera.lowerRadiusLimit = 1
     this.camera.fov = 1.333
     this.camera.minZ = 0.1
     this.camera.maxZ = 1000
@@ -107,6 +104,8 @@ export class World {
         anim.start(true)
       })
 
+      this.meshes = result.meshes
+
       result.meshes.forEach(mesh => {
         if (mesh.name === 'Plane.001') { // water
           this.water = mesh
@@ -153,6 +152,16 @@ export class World {
 
     if (cameraGround.hit) {
       this.camera.setPosition(new Vector3(this.camera.position.x, cameraGround.pickedPoint!.y + 1, this.camera.position.z))
+    }
+
+    const t = this.player.player.position.add(new Vector3(0, 2, 0))
+    const d = Vector3.Distance(this.camera.position, t)
+    const dir = this.camera.position.subtract(t).normalize()
+    const ray = new Ray(t, dir, d)
+    const hits = ray.intersectsMeshes(this.meshes)
+
+    if (hits?.[0]?.hit) {
+      this.camera.setPosition(Vector3.Lerp(this.camera.position, hits[0]!.pickedPoint!.subtract(dir), .125))
     }
 
     this.skybox.update()
