@@ -1,4 +1,4 @@
-import { AnimationGroup } from "@babylonjs/core";
+import { AnimationGroup } from '@babylonjs/core'
 
 export class Animations {
   private animations: Array<AnimationGroup> = []

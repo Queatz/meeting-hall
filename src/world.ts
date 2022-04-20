@@ -1,5 +1,6 @@
 import {
   AbstractMesh,
+  AnimationGroup,
   ArcRotateCamera,
   ArcRotateCameraMouseWheelInput,
   CascadedShadowGenerator,
@@ -9,15 +10,22 @@ import {
   Engine,
   HemisphericLight,
   MirrorTexture,
+  NodeMaterial,
   PBRMaterial,
+  Plane,
   Ray,
+  ReflectionBlock,
   Scene,
   SceneLoader,
+  Texture,
+  TextureBlock,
+  TransformNode,
   Vector3
-} from "@babylonjs/core";
-import { Sky } from "./sky";
-import { PostProcess } from "./postProcess";
-import { Player } from "./player";
+} from '@babylonjs/core'
+import { Sky } from './sky'
+import { PostProcess } from './postProcess'
+import { Player } from './player'
+import { ISceneLoaderAsyncResult } from '@babylonjs/core'
 
 export class World {
 
@@ -89,45 +97,42 @@ export class World {
     this.mirror.level = 1
     this.mirror.renderList!.push(this.skybox.skybox)
 
-    SceneLoader.ImportMeshAsync('', '/assets/', 'forest.glb', scene).then(result => {
+    SceneLoader.ImportMeshAsync('', '/assets/', 'forest.glb', scene).then((result: ISceneLoaderAsyncResult) => {
       this.player = new Player(this, scene)
 
-      this.ground = result.meshes.find(x => x.name === 'Plane.015')! // Ground
+      this.ground = result.meshes.find((x: AbstractMesh) => x.name === 'Plane.015')! // Ground
 
-      const startingPoint = result.transformNodes.find(x => x.name === 'Starting point')
+      const startingPoint = result.transformNodes.find((x: TransformNode) => x.name === 'Starting point')
 
       if (startingPoint) {
         this.startingPoint.copyFrom(startingPoint.position)
       }
 
-      result.animationGroups.forEach(anim => {
+      result.animationGroups.forEach((anim: AnimationGroup) => {
         anim.start(true)
       })
 
       this.meshes = result.meshes
 
-      result.meshes.forEach(mesh => {
+      result.meshes.forEach((mesh: AbstractMesh) => {
         if (mesh.name === 'Plane.001') { // water
           this.water = mesh
 
-          // NodeMaterial.ParseFromFileAsync("Water", "assets/water.json", scene).then(material => {
-          //   material.backFaceCulling = false
-          //
-          //   const normalMap = material.getBlockByName('Texture') as TextureBlock
-          //   const reflection = material.getBlockByName('Reflection') as ReflectionBlock
-          //   normalMap.texture = new Texture('assets/waterbump.png', scene, undefined, undefined, Texture.LINEAR_LINEAR_MIPLINEAR)
-          //   normalMap.texture.uScale = 2
-          //   normalMap.texture.vScale = 2
-          //   normalMap.texture.level = 1
-          //   reflection.texture = this.mirror
-          //   reflection.texture = new Texture('assets/skybox.png', scene)
-          //   reflection.texture.coordinatesMode = Texture.EQUIRECTANGULAR_MODE
-          //   this.water.material = material
-          //
-          //   this.water.material!.onBindObservable.add(() => {
-          //     this.mirror.mirrorPlane = Plane.FromPositionAndNormal(this.water.position, Vector3.Down())
-          //   })
-          // })
+          NodeMaterial.ParseFromFileAsync("Water", "assets/water.json", scene).then((material: NodeMaterial) => {
+            material.backFaceCulling = false
+
+            const normalMap = material.getBlockByName('Texture') as TextureBlock
+            const reflection = material.getBlockByName('Reflection') as ReflectionBlock
+            normalMap.texture = new Texture('assets/waterbump.png', scene, undefined, undefined, Texture.LINEAR_LINEAR_MIPLINEAR)
+            // reflection.texture = this.mirror
+            reflection.texture = new Texture('assets/skybox.png', scene)
+            reflection.texture.coordinatesMode = Texture.EQUIRECTANGULAR_MODE
+            this.water.material = material
+
+            this.water.material!.onBindObservable.add(() => {
+              this.mirror.mirrorPlane = Plane.FromPositionAndNormal(this.water.position, Vector3.Down())
+            })
+          })
         } else {
           if (mesh.material instanceof PBRMaterial) {
             mesh.material.specularIntensity = Math.min(mesh.material.specularIntensity, .1)

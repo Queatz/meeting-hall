@@ -1,4 +1,4 @@
-import { World } from "./world";
+import { World } from './world'
 import {
   AbstractMesh,
   Mesh,
@@ -8,9 +8,9 @@ import {
   SceneLoader,
   Skeleton,
   Vector3
-} from "@babylonjs/core";
-import { PlayerInput } from "./input";
-import { Animations } from "./animations";
+} from '@babylonjs/core'
+import { PlayerInput } from './input'
+import { Animations } from './animations'
 
 export class Player {
 

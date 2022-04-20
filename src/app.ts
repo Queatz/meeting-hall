@@ -2,8 +2,8 @@ import '@babylonjs/core/Debug/debugLayer'
 import '@babylonjs/inspector'
 import '@babylonjs/loaders/glTF'
 import { Engine, Scene } from '@babylonjs/core'
-import { World } from "./world";
-import { Ui } from "./ui";
+import { World } from "./world"
+import { Ui } from "./ui"
 
 class App {
   constructor() {

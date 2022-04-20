@@ -1,16 +1,16 @@
 import {
   ArcRotateCamera,
   Camera,
-  Color3,
-  Color4, Constants,
+  Color4,
   DynamicTexture,
-  Engine, Material,
+  Engine,
+  ICanvasRenderingContext,
   MeshBuilder,
   Scene,
   StandardMaterial,
   Texture,
   Vector3
-} from "@babylonjs/core"
+} from '@babylonjs/core'
 
 export class Ui {
 
@@ -35,6 +35,8 @@ export class Ui {
     this.text('Talk with Alex ☑', 2)
     this.text('Talk with Meg ☐', 3)
     this.text('Talk with Jessica ☐', 4)
+
+    this.box()
   }
 
   render() {
@@ -69,10 +71,9 @@ export class Ui {
       Engine.TEXTUREFORMAT_ALPHA
     )
 
-    dynamicTexture.drawText(text, null, null, font, '#ffffff', null as any)
+    dynamicTexture.drawText(text, null, null, font, '#ffffff', null)
     const mat = new StandardMaterial('mat', this.scene)
-
-    mat.emissiveTexture = dynamicTexture//Color3.White()
+    mat.emissiveTexture = dynamicTexture
     mat.opacityTexture = dynamicTexture
     mat.disableLighting = true
 
@@ -80,5 +81,54 @@ export class Ui {
     plane.material = mat
     plane.rotation.x = Math.PI / 2
     plane.position = new Vector3(1 - planeWidth / 2 - planeHeight, 0, planeHeight * lineHeight * position)
+  }
+
+  private box() {
+    const xRes = 1024
+    const aspect = .2
+    const padding = .015
+
+    const dynamicTexture = new DynamicTexture('DynamicTexture',
+      { width: xRes, height: xRes * aspect },
+      this.scene,
+      false,
+      Texture.LINEAR_LINEAR,
+      Engine.TEXTUREFORMAT_ALPHA,
+    )
+
+    dynamicTexture.getContext().fillStyle = '#ffffff'
+    Ui.canvasRoundRect(dynamicTexture.getContext(), 0, 0, xRes, xRes * aspect, 16)
+    dynamicTexture.update()
+
+    const mat = new StandardMaterial('mat', this.scene)
+    mat.emissiveTexture = dynamicTexture
+    mat.opacityTexture = dynamicTexture
+    mat.disableLighting = true
+
+    mat.backFaceCulling = false
+
+    const w = 1 - padding * 2
+    const h = w * aspect
+
+    const plane = MeshBuilder.CreatePlane('Text', { width: w, height: h, updatable: false }, this.scene)
+    plane.material = mat
+    plane.rotation.x = Math.PI / 2
+    plane.position = new Vector3(w / 2 + padding, 0, h / 2 + padding)
+  }
+
+  private static canvasRoundRect(context: ICanvasRenderingContext, x: number, y: number, w: number, h: number, radius: number) {
+    const r = x + w
+    const b = y + h
+    context.beginPath()
+    context.moveTo(x + radius, y)
+    context.lineTo(r - radius, y)
+    context.quadraticCurveTo(r, y, r, y + radius)
+    context.lineTo(r, y + h - radius)
+    context.quadraticCurveTo(r, b, r - radius, b)
+    context.lineTo(x + radius, b)
+    context.quadraticCurveTo(x, b, x, b - radius)
+    context.lineTo(x, y + radius)
+    context.quadraticCurveTo(x, y, x + radius, y)
+    context.fill()
   }
 }

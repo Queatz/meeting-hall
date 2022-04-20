@@ -12,12 +12,12 @@ import {
   Texture,
   Vector3,
   VolumetricLightScatteringPostProcess
-} from "@babylonjs/core";
+} from '@babylonjs/core'
 
 export class PostProcess {
   constructor(scene: Scene, camera: Camera, engine: Engine, sunDirection: Vector3, excludeMeshes: Array<AbstractMesh>) {
 
-    const quality = 0
+    const quality = 1
 
     const pipeline = new DefaultRenderingPipeline('Default Pipeline', true, scene, [ camera ])
     pipeline.samples = 4
@@ -82,7 +82,7 @@ export class PostProcess {
     //   camera
     // )
 
-    if (quality >= 1) {
+    if (quality >= 2) {
       const ssao = new SSAO2RenderingPipeline('ssaopipeline', scene, .667, [camera])
       ssao.totalStrength = .75
       ssao.samples = 12
