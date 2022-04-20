@@ -1,9 +1,10 @@
 import {
+  AbstractMesh, ActionManager,
   ArcRotateCamera,
   Camera,
   Color4,
   DynamicTexture,
-  Engine,
+  Engine, ExecuteCodeAction,
   ICanvasRenderingContext,
   MeshBuilder,
   Scene,
@@ -17,12 +18,16 @@ export class Ui {
   private readonly scene: Scene
   private readonly camera: ArcRotateCamera
 
+  get blockPointer() {
+    return !!this.scene.getPointerOverMesh()
+  }
+
   constructor(engine: Engine) {
     this.scene = new Scene(engine)
     this.scene.autoClear = false
     this.scene.clearColor = new Color4(1, 1, 1, 0)
 
-    this.camera = new ArcRotateCamera('UI Camera', -Math.PI / 2,  0, 10, new Vector3(0, 0, 0), this.scene)
+    this.camera = new ArcRotateCamera('UI Camera', -Math.PI / 2, Math.PI / 2, 50, new Vector3(0, 0, 0), this.scene)
     this.camera.maxZ = 100
     this.camera.minZ = 0
     this.camera.mode = Camera.ORTHOGRAPHIC_CAMERA
@@ -31,12 +36,19 @@ export class Ui {
     this.camera.orthoTop = 1
     this.camera.orthoBottom = 0
 
-    this.text('Talk with Amanda ☑', 1)
-    this.text('Talk with Alex ☑', 2)
-    this.text('Talk with Meg ☐', 3)
-    this.text('Talk with Jessica ☐', 4)
+    // this.text('Talk with Amanda ☑', 1, undefined, undefined, true)
+    // this.text('Talk with Alex ☑', 2, undefined, undefined, true)
+    // this.text('Talk with Meg ☐', 3, undefined, undefined, true)
+    // this.text('Talk with Jessica ☐', 4, undefined, undefined, true)
 
     this.box()
+
+    this.text('Amanda', 6, '#000000', 'bold')
+    this.text('"Hey, how\'s it going?"' , 5, '#000000')
+    this.text('', 4, '#000000')
+    this.text('➺ I want to know more about George', 3, '#000000', undefined, undefined, () => {})
+    this.text('➺ Can you tell me something about Samantha?', 2, '#000000', undefined, undefined, () => {})
+    this.text('➺ Where do you like to hang out?', 1, '#000000', undefined, undefined, () => {})
   }
 
   render() {
@@ -46,10 +58,17 @@ export class Ui {
     this.scene.render()
   }
 
-  private text(text: string, position: number) {
-    const lineHeight = 1.5
+  private text(
+    text: string,
+    position: number,
+    color = '#ffffff',
+    style = 'normal',
+    rightAlign = false,
+    click?: () => void
+  ): AbstractMesh {
+    const lineHeight = 1.25
     const fontSize = 24
-    const font = 'normal ' + fontSize + 'px Bellota, sans-serif'
+    const font = style + ' ' + fontSize + 'px Bellota, sans-serif'
 
     const planeHeight = .025
     const DTHeight = 1.5 * fontSize
@@ -62,6 +81,7 @@ export class Ui {
     temp.dispose()
 
     const planeWidth = DTWidth * ratio
+    const padding = .015
 
     const dynamicTexture = new DynamicTexture('DynamicTexture',
       { width: DTWidth, height: DTHeight },
@@ -71,7 +91,7 @@ export class Ui {
       Engine.TEXTUREFORMAT_ALPHA
     )
 
-    dynamicTexture.drawText(text, null, null, font, '#ffffff', null)
+    dynamicTexture.drawText(text, null, null, font, color, null)
     const mat = new StandardMaterial('mat', this.scene)
     mat.emissiveTexture = dynamicTexture
     mat.opacityTexture = dynamicTexture
@@ -79,15 +99,32 @@ export class Ui {
 
     const plane = MeshBuilder.CreatePlane('Text', { width: planeWidth, height: planeHeight, updatable: false }, this.scene)
     plane.material = mat
-    plane.rotation.x = Math.PI / 2
-    plane.position = new Vector3(1 - planeWidth / 2 - planeHeight, 0, planeHeight * lineHeight * position)
+    // plane.rotation.x = Math.PI / 2
+    plane.position = new Vector3(
+      rightAlign ? 1 - planeWidth / 2 - padding : planeWidth / 2 + padding,
+      planeHeight * lineHeight * position + padding,
+      0,
+    )
+
+    plane.enablePointerMoveEvents = true
+
+    if (click) {
+      plane.actionManager = new ActionManager(this.scene)
+      plane.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPointerOverTrigger, () => {
+        plane.material!.alpha = .5
+      }))
+      plane.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPointerOutTrigger, () => {
+        plane.material!.alpha = 1
+      }))
+      plane.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPickTrigger, () => {
+        click()
+      }))
+    }
+
+    return plane
   }
 
-  private box() {
-    const xRes = 1024
-    const aspect = .2
-    const padding = .015
-
+  private box(xRes = 1024, aspect = .215, padding = .015): AbstractMesh {
     const dynamicTexture = new DynamicTexture('DynamicTexture',
       { width: xRes, height: xRes * aspect },
       this.scene,
@@ -104,16 +141,19 @@ export class Ui {
     mat.emissiveTexture = dynamicTexture
     mat.opacityTexture = dynamicTexture
     mat.disableLighting = true
-
-    mat.backFaceCulling = false
+    mat.alpha = .95
 
     const w = 1 - padding * 2
     const h = w * aspect
 
     const plane = MeshBuilder.CreatePlane('Text', { width: w, height: h, updatable: false }, this.scene)
     plane.material = mat
-    plane.rotation.x = Math.PI / 2
-    plane.position = new Vector3(w / 2 + padding, 0, h / 2 + padding)
+    // plane.rotation.x = Math.PI / 2
+    plane.position = new Vector3(w / 2 + padding, h / 2 + padding, 1)
+
+    plane.enablePointerMoveEvents = true
+
+    return plane
   }
 
   private static canvasRoundRect(context: ICanvasRenderingContext, x: number, y: number, w: number, h: number, radius: number) {

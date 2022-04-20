@@ -17,9 +17,8 @@ class App {
 
     const engine = new Engine(canvas, true)
     const scene = new Scene(engine)
-    const world = new World(scene, engine, canvas)
-
     const ui = new Ui(engine)
+    const world = new World(scene, ui, engine, canvas)
 
     // hide/show the Inspector
     window.addEventListener('keydown', (ev) => {

@@ -26,6 +26,7 @@ import { Sky } from './sky'
 import { PostProcess } from './postProcess'
 import { Player } from './player'
 import { ISceneLoaderAsyncResult } from '@babylonjs/core'
+import { Ui } from './ui'
 
 export class World {
 
@@ -47,7 +48,7 @@ export class World {
     return !!this.ground && this.player?.ready
   }
 
-  constructor(private scene: Scene, engine: Engine, canvas: HTMLCanvasElement) {
+  constructor(private scene: Scene, private ui: Ui, engine: Engine, canvas: HTMLCanvasElement) {
     scene.fogMode = Scene.FOGMODE_EXP2
     scene.fogDensity = 0.0025
     scene.fogStart = 500
@@ -98,7 +99,7 @@ export class World {
     this.mirror.renderList!.push(this.skybox.skybox)
 
     SceneLoader.ImportMeshAsync('', '/assets/', 'forest.glb', scene).then((result: ISceneLoaderAsyncResult) => {
-      this.player = new Player(this, scene)
+      this.player = new Player(this, scene, ui)
 
       this.ground = result.meshes.find((x: AbstractMesh) => x.name === 'Plane.015')! // Ground
 

@@ -11,6 +11,7 @@ import {
 } from '@babylonjs/core'
 import { PlayerInput } from './input'
 import { Animations } from './animations'
+import { Ui } from './ui'
 
 export class Player {
 
@@ -25,7 +26,7 @@ export class Player {
     return !!this.player
   }
 
-  constructor(private world: World, private scene: Scene) {
+  constructor(private world: World, private scene: Scene, private ui: Ui) {
     SceneLoader.ImportMeshAsync('', '/assets/', 'girl.glb', scene).then(result => {
       this.player = result.meshes[0]
 
@@ -68,12 +69,12 @@ export class Player {
       this.player.position.copyFrom(this.world.startingPoint)
     }
 
-    const run = this.input.key('Shift') || this.input.button(2)
+    const run = this.input.key('Shift') || (!this.ui.blockPointer && this.input.button(2))
     const s = 0.005 * this.scene.deltaTime * (this.input.key('q') ? 10 : run ? 1 : 0.5)
 
     let x = 0, z = 0
 
-    if (this.input.key('w') || this.input.button(0) || this.input.button(2)) {
+    if (this.input.key('w') || (!this.ui.blockPointer && (this.input.button(0) || this.input.button(2)))) {
       z = s
     }
 
