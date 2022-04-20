@@ -50,7 +50,7 @@ export class Ui {
     this.text(says , 5, '#000000')
 
     for (let i = 0; i < options.length; i++) {
-      this.text(options[i][0], 3 - i, '#000000', undefined, undefined, options[i][1])
+      this.text('⮚  "' + options[i][0] + '"', 3 - i, '#000000', undefined, undefined, options[i][1])
     }
   }
 

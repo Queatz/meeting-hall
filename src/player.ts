@@ -16,10 +16,11 @@ import { Ui } from './ui'
 export class Player {
 
   player!: AbstractMesh
+  target!: AbstractMesh
 
   private input = new PlayerInput(this.scene)
-  private skeleton!: Skeleton
 
+  private skeleton!: Skeleton
   private playerAnimations = new Animations()
 
   get ready() {
@@ -40,6 +41,7 @@ export class Player {
       target.position.y = 2
       target.position.x = 0
       target.position.z = 0
+      this.target = target
 
       this.world.camera.setTarget(target)
       this.world.camera.setPosition(this.player.position.add(new Vector3(0, 3, -6)))

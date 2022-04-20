@@ -46,6 +46,8 @@ export class World {
 
   private npcs = new Array<AbstractMesh>()
   private currentNpc?: AbstractMesh
+  private npcSceneCameraTarget = Vector3.Zero()
+  private npcSceneCamera = 0
 
   get ready() {
     return !!this.ground && this.player?.ready
@@ -120,6 +122,10 @@ export class World {
       const girl = result.meshes.find(x => x.name === 'Cube.007')!
       this.npcs.push(girl)
 
+      // Girl 2
+      const girl2 = result.meshes.find(x => x.name === 'Cube')!
+      this.npcs.push(girl2)
+
       this.meshes = result.meshes
 
       result.meshes.forEach((mesh: AbstractMesh) => {
@@ -170,14 +176,36 @@ export class World {
       this.npcs.forEach(npc => {
         if (Vector3.DistanceSquared(npc.absolutePosition, this.player.player.position) < 2) {
           this.currentNpc = npc
+          this.npcSceneCamera = 0
+          this.npcSceneCameraTarget = Vector3.Lerp(this.currentNpc.absolutePosition.add(new Vector3(0, 2, 0)), this.player.target.absolutePosition, .5)
 
           this.ui.conversation('Amanda', 'Hi.', [
-            ['➺ I want to know more about George', () => { this.ui.clear() }],
-            ['➺ Can you tell me something about Samantha?', () => { this.ui.clear() }],
-            ['➺ Where do you like to hang out?', () => { this.ui.clear() }],
+            ['I want to know more about George', () => { this.ui.clear() }],
+            ['Can you tell me something about Samantha?', () => { this.ui.clear() }],
+            ['Where do you like to hang out?', () => { this.ui.clear() }],
           ])
         }
       })
+    }
+
+    if (this.currentNpc) {
+      if (this.npcSceneCamera < 1) {
+        this.npcSceneCamera += this.scene.deltaTime * .00125
+        this.npcSceneCamera = Math.min(1, this.npcSceneCamera)
+      }
+
+      this.camera.setTarget(Vector3.Lerp(this.player.target.absolutePosition, this.npcSceneCameraTarget, World.interpolate(this.npcSceneCamera)))
+    } else {
+      if (this.npcSceneCamera > 0) {
+        this.npcSceneCamera -= this.scene.deltaTime * .00125
+        this.npcSceneCamera = Math.max(0, this.npcSceneCamera)
+
+        if (this.npcSceneCamera) {
+          this.camera.setTarget(Vector3.Lerp(this.player.target.absolutePosition, this.npcSceneCameraTarget, World.interpolate(this.npcSceneCamera)))
+        } else {
+          this.camera.setTarget(this.player.target)
+        }
+      }
     }
 
     const cameraGround = new Ray(this.camera.position, Vector3.Down(), 1).intersectsMesh(this.ground)
@@ -213,6 +241,14 @@ export class World {
       this.scene.ambientColor = new Color3(this.scene.clearColor.r, this.scene.clearColor.g, this.scene.clearColor.b)
       this.scene.fogDensity = .0025
       this.skybox.skybox.applyFog = false
+    }
+  }
+
+  private static interpolate(value: number) {
+    if (value < .5) {
+      return Math.pow(value * 2, 2) / 2
+    } else {
+      return 1 - Math.pow(1 - ((value - .5) * 2), 2) / 2
     }
   }
 }
