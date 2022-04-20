@@ -17,6 +17,7 @@ export class Ui {
 
   private readonly scene: Scene
   private readonly camera: ArcRotateCamera
+  private readonly meshes = new Array<AbstractMesh>()
 
   get blockPointer() {
     return !!this.scene.getPointerOverMesh()
@@ -40,15 +41,22 @@ export class Ui {
     // this.text('Talk with Alex ☑', 2, undefined, undefined, true)
     // this.text('Talk with Meg ☐', 3, undefined, undefined, true)
     // this.text('Talk with Jessica ☐', 4, undefined, undefined, true)
+  }
 
+  conversation(person: string, says: string, options: Array<[string, () => void]>) {
     this.box()
 
-    this.text('Amanda', 6, '#000000', 'bold')
-    this.text('"Hey, how\'s it going?"' , 5, '#000000')
-    this.text('', 4, '#000000')
-    this.text('➺ I want to know more about George', 3, '#000000', undefined, undefined, () => {})
-    this.text('➺ Can you tell me something about Samantha?', 2, '#000000', undefined, undefined, () => {})
-    this.text('➺ Where do you like to hang out?', 1, '#000000', undefined, undefined, () => {})
+    this.text(person, 6, '#000000', 'bold')
+    this.text(says , 5, '#000000')
+
+    for (let i = 0; i < options.length; i++) {
+      this.text(options[i][0], 3 - i, '#000000', undefined, undefined, options[i][1])
+    }
+  }
+
+  clear() {
+    this.meshes.forEach(mesh => this.scene.removeMesh(mesh))
+    this.meshes.length = 0
   }
 
   render() {
@@ -68,7 +76,7 @@ export class Ui {
   ): AbstractMesh {
     const lineHeight = 1.25
     const fontSize = 24
-    const font = style + ' ' + fontSize + 'px Bellota, sans-serif'
+    const font = style + ' ' + fontSize + 'px Arvo, sans-serif'
 
     const planeHeight = .025
     const DTHeight = 1.5 * fontSize
@@ -110,16 +118,12 @@ export class Ui {
 
     if (click) {
       plane.actionManager = new ActionManager(this.scene)
-      plane.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPointerOverTrigger, () => {
-        plane.material!.alpha = .5
-      }))
-      plane.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPointerOutTrigger, () => {
-        plane.material!.alpha = 1
-      }))
-      plane.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPickTrigger, () => {
-        click()
-      }))
+      plane.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPointerOverTrigger, () => { plane.material!.alpha = .5 }))
+      plane.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPointerOutTrigger, () => { plane.material!.alpha = 1 }))
+      plane.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPickTrigger, () => { click() }))
     }
+
+    this.meshes.push(plane)
 
     return plane
   }
@@ -152,6 +156,8 @@ export class Ui {
     plane.position = new Vector3(w / 2 + padding, h / 2 + padding, 1)
 
     plane.enablePointerMoveEvents = true
+
+    this.meshes.push(plane)
 
     return plane
   }

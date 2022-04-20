@@ -16,7 +16,7 @@ import {
   Ray,
   ReflectionBlock,
   Scene,
-  SceneLoader,
+  SceneLoader, Skeleton,
   Texture,
   TextureBlock,
   TransformNode,
@@ -42,7 +42,10 @@ export class World {
   private clearColor: Color4
 
   private player!: Player
-  private meshes!: Array<AbstractMesh>;
+  private meshes!: Array<AbstractMesh>
+
+  private npcs = new Array<AbstractMesh>()
+  private currentNpc?: AbstractMesh
 
   get ready() {
     return !!this.ground && this.player?.ready
@@ -113,6 +116,10 @@ export class World {
         anim.start(true)
       })
 
+      // Girl 1
+      const girl = result.meshes.find(x => x.name === 'Cube.007')!
+      this.npcs.push(girl)
+
       this.meshes = result.meshes
 
       result.meshes.forEach((mesh: AbstractMesh) => {
@@ -153,6 +160,25 @@ export class World {
 
   update() {
     this.player.update()
+
+    if (this.currentNpc) {
+      if (Vector3.DistanceSquared(this.currentNpc.absolutePosition, this.player.player.position) > 2) {
+        this.ui.clear()
+        this.currentNpc = undefined
+      }
+    } else {
+      this.npcs.forEach(npc => {
+        if (Vector3.DistanceSquared(npc.absolutePosition, this.player.player.position) < 2) {
+          this.currentNpc = npc
+
+          this.ui.conversation('Amanda', 'Hi.', [
+            ['➺ I want to know more about George', () => { this.ui.clear() }],
+            ['➺ Can you tell me something about Samantha?', () => { this.ui.clear() }],
+            ['➺ Where do you like to hang out?', () => { this.ui.clear() }],
+          ])
+        }
+      })
+    }
 
     const cameraGround = new Ray(this.camera.position, Vector3.Down(), 1).intersectsMesh(this.ground)
 

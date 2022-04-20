@@ -1,4 +1,4 @@
-@import "https://fonts.googleapis.com/css2?family=Bellota:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap";
+@import "https://fonts.googleapis.com/css2?family=Arvo:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap";
 
 html, body {
     margin: 0;
@@ -6,4 +6,5 @@ html, body {
     height: 100vh;
     width: 100vw;
     overflow: hidden;
+    font-family: Arvo, sans-serif;
 }
