@@ -17,7 +17,7 @@ import {
 export class PostProcess {
   constructor(scene: Scene, camera: Camera, engine: Engine, sunDirection: Vector3, excludeMeshes: Array<AbstractMesh>) {
 
-    const quality = 0
+    const quality = 1
 
     const pipeline = new DefaultRenderingPipeline('Default Pipeline', true, scene, [ camera ])
     pipeline.samples = 4

@@ -46,6 +46,8 @@ export class Ui {
   }
 
   conversation(person: string, says: string, options: Array<[string, () => void]>) {
+    this.clear()
+
     if (this.boxMesh) {
       this.boxMesh.isVisible = true
     } else {

@@ -75,6 +75,7 @@ export class World {
     this.camera.attachControl(canvas, true)
     this.camera.upperRadiusLimit = 10
     this.camera.lowerRadiusLimit = 1
+    this.camera.upperBetaLimit = Math.PI / 2 + Math.PI / 4
     this.camera.fov = 1.333
     this.camera.minZ = 0.1
     this.camera.maxZ = 1000

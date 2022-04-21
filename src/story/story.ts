@@ -24,8 +24,8 @@ export class Story {
 
     const next = npc.next({
       end: () => { this.ui.clear() },
-      next: options => { this.ui.clear(); this.ui.conversation(npc.name, options.text, options.options) },
-      restart: () => { this.ui.clear(); this.show(npcName) }
+      next: options => { this.ui.conversation(npc.name, options.text, options.options) },
+      restart: () => { this.show(npcName) }
     }, this.data)
 
     this.ui.conversation(npc.name, next.text, next.options)
