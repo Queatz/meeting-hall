@@ -16,7 +16,7 @@ import {
   Ray,
   ReflectionBlock,
   Scene,
-  SceneLoader, Skeleton,
+  SceneLoader,
   Texture,
   TextureBlock,
   TransformNode,
@@ -27,6 +27,8 @@ import { PostProcess } from './postProcess'
 import { Player } from './player'
 import { ISceneLoaderAsyncResult } from '@babylonjs/core'
 import { Ui } from './ui'
+import { Npc } from "./npc";
+import { Story } from "./story/story";
 
 export class World {
 
@@ -44,10 +46,12 @@ export class World {
   private player!: Player
   private meshes!: Array<AbstractMesh>
 
-  private npcs = new Array<AbstractMesh>()
-  private currentNpc?: AbstractMesh
+  private currentNpc?: AbstractMesh | TransformNode
   private npcSceneCameraTarget = Vector3.Zero()
   private npcSceneCamera = 0
+
+  private story = new Story(this.ui)
+  private npc = new Npc()
 
   get ready() {
     return !!this.ground && this.player?.ready
@@ -118,14 +122,8 @@ export class World {
         anim.start(true)
       })
 
-      // Girl 1
-      const girl = result.meshes.find(x => x.name === 'Cube.007')!
-      this.npcs.push(girl)
-
-      // Girl 2
-      const girl2 = result.meshes.find(x => x.name === 'Cube')!
-      this.npcs.push(girl2)
-
+      this.npc.addFromMeshes(result.meshes)
+      this.npc.addFromTransformNodes(result.transformNodes)
       this.meshes = result.meshes
 
       result.meshes.forEach((mesh: AbstractMesh) => {
@@ -173,17 +171,13 @@ export class World {
         this.currentNpc = undefined
       }
     } else {
-      this.npcs.forEach(npc => {
+      this.npc.npcs.forEach(npc => {
         if (Vector3.DistanceSquared(npc.absolutePosition, this.player.player.position) < 2) {
           this.currentNpc = npc
           this.npcSceneCamera = 0
           this.npcSceneCameraTarget = Vector3.Lerp(this.currentNpc.absolutePosition.add(new Vector3(0, 2, 0)), this.player.target.absolutePosition, .5)
 
-          this.ui.conversation('Amanda', 'Hi.', [
-            ['I want to know more about George', () => { this.ui.clear() }],
-            ['Can you tell me something about Samantha?', () => { this.ui.clear() }],
-            ['Where do you like to hang out?', () => { this.ui.clear() }],
-          ])
+          this.story.show(this.npc.getNpcData(npc))
         }
       })
     }

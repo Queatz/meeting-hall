@@ -17,7 +17,9 @@ export class Ui {
 
   private readonly scene: Scene
   private readonly camera: ArcRotateCamera
-  private readonly meshes = new Array<AbstractMesh>()
+  private readonly textMeshes = new Array<AbstractMesh>()
+
+  private boxMesh?: AbstractMesh
 
   get blockPointer() {
     return !!this.scene.getPointerOverMesh()
@@ -44,19 +46,27 @@ export class Ui {
   }
 
   conversation(person: string, says: string, options: Array<[string, () => void]>) {
-    this.box()
+    if (this.boxMesh) {
+      this.boxMesh.isVisible = true
+    } else {
+      this.boxMesh = this.createBox()
+    }
 
     this.text(person, 6, '#000000', 'bold')
     this.text(says , 5, '#000000')
 
     for (let i = 0; i < options.length; i++) {
-      this.text('⮚  "' + options[i][0] + '"', 3 - i, '#000000', undefined, undefined, options[i][1])
+      this.text('⮚  ' + options[i][0], 3 - i, '#000000', undefined, undefined, options[i][1])
     }
   }
 
   clear() {
-    this.meshes.forEach(mesh => this.scene.removeMesh(mesh))
-    this.meshes.length = 0
+    if (this.boxMesh) {
+      this.boxMesh.isVisible = false
+    }
+
+    this.textMeshes.forEach(mesh => this.scene.removeMesh(mesh))
+    this.textMeshes.length = 0
   }
 
   render() {
@@ -123,12 +133,12 @@ export class Ui {
       plane.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPickTrigger, () => { click() }))
     }
 
-    this.meshes.push(plane)
+    this.textMeshes.push(plane)
 
     return plane
   }
 
-  private box(xRes = 1024, aspect = .215, padding = .015): AbstractMesh {
+  private createBox(xRes = 1024, aspect = .215, padding = .015): AbstractMesh {
     const dynamicTexture = new DynamicTexture('DynamicTexture',
       { width: xRes, height: xRes * aspect },
       this.scene,
@@ -156,8 +166,6 @@ export class Ui {
     plane.position = new Vector3(w / 2 + padding, h / 2 + padding, 1)
 
     plane.enablePointerMoveEvents = true
-
-    this.meshes.push(plane)
 
     return plane
   }
