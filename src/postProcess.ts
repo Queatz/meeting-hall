@@ -25,7 +25,7 @@ export class PostProcess {
 
     if (quality >= 1) {
       pipeline.bloomEnabled = true
-      pipeline.bloomThreshold = 1
+      pipeline.bloomThreshold = .8
       pipeline.bloomWeight = 0.5
       pipeline.bloomKernel = 96
       pipeline.bloomScale = .25
@@ -49,7 +49,7 @@ export class PostProcess {
         MeshBuilder.CreateSphere('godrays',
           {
             segments: 8,
-            diameter: 15
+            diameter: 20
           },
           scene),
         64,
@@ -63,7 +63,7 @@ export class PostProcess {
       // godrays.decay = 0.987
       // godrays.weight =
       // godrays.density = 0.992
-      godrays.mesh.position = sunDirection.negate().multiply(Vector3.One().scale(100))
+      godrays.mesh.position = sunDirection.negate().multiply(Vector3.One().scale(500))
 
       const godrayMaterial = new StandardMaterial('Godray Material', scene)
       godrayMaterial.emissiveColor = Color3.White()

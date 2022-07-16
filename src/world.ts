@@ -59,7 +59,7 @@ export class World {
 
   constructor(private scene: Scene, private ui: Ui, engine: Engine, canvas: HTMLCanvasElement) {
     scene.fogMode = Scene.FOGMODE_EXP2
-    scene.fogDensity = 0.0025
+    scene.fogDensity = 0.00125
     scene.fogStart = 500
     scene.fogEnd = 1000
     scene.clearColor = new Color4(.5, .667, 1)
@@ -81,12 +81,12 @@ export class World {
     this.camera.maxZ = 1000
     ;(this.camera.inputs.attached['mousewheel'] as ArcRotateCameraMouseWheelInput).wheelPrecision = 64
 
-    const light1: HemisphericLight = new HemisphericLight('light1', new Vector3(1, 1, 0), scene)
+    const light1: HemisphericLight = new HemisphericLight('light1', new Vector3(0, 1, 0), scene)
     light1.specular = Color3.Black()
     light1.diffuse = scene.ambientColor
-    light1.intensity = .6
+    light1.intensity = .667
     const sun: DirectionalLight = new DirectionalLight('Sun', new Vector3(-.75, -.5, 0).normalize(), scene)
-    sun.intensity = 1.2
+    sun.intensity = 1.333
     sun.shadowMinZ = this.camera.minZ
     sun.shadowMaxZ = this.camera.maxZ
 
@@ -106,7 +106,8 @@ export class World {
 
     this.mirror = new MirrorTexture('main', 1024, scene, true)
     this.mirror.level = 1
-    this.mirror.renderList!.push(this.skybox.skybox)
+    this.mirror.renderList = [this.skybox.skybox]
+    this.scene.customRenderTargets.push(this.mirror)
 
     SceneLoader.ImportMeshAsync('', '/assets/', 'forest.glb', scene).then((result: ISceneLoaderAsyncResult) => {
       this.player = new Player(this, scene, ui)
@@ -116,7 +117,7 @@ export class World {
       const startingPoint = result.transformNodes.find((x: TransformNode) => x.name === 'Starting point')
 
       if (startingPoint) {
-        this.startingPoint.copyFrom(startingPoint.position)
+        this.startingPoint.copyFrom(startingPoint.absolutePosition)
       }
 
       result.animationGroups.forEach((anim: AnimationGroup) => {
@@ -127,20 +128,30 @@ export class World {
       this.npc.addFromTransformNodes(result.transformNodes)
       this.meshes = result.meshes
 
+      console.log(result.meshes)
+
+      result.meshes.forEach((mesh: AbstractMesh) => {
+        if (mesh.skeleton && mesh.getMeshUniformBuffer()) {
+
+        }
+      })
+
+      const worldEdge = result.meshes.find((x: AbstractMesh) => x.name === 'Plane.003')!
+      ;(worldEdge.material as PBRMaterial).emissiveColor = new Color3(1, .25, .5).scale(2.25)
+
       result.meshes.forEach((mesh: AbstractMesh) => {
         if (mesh.name === 'Plane.001') { // water
           this.water = mesh
 
           NodeMaterial.ParseFromFileAsync("Water", "assets/water.json", scene).then((material: NodeMaterial) => {
             material.backFaceCulling = false
-
-            const normalMap = material.getBlockByName('Texture') as TextureBlock
-            const reflection = material.getBlockByName('Reflection') as ReflectionBlock
-            normalMap.texture = new Texture('assets/waterbump.png', scene, undefined, undefined, Texture.LINEAR_LINEAR_MIPLINEAR)
+            // const normalMap = material.getBlockByName('Texture') as TextureBlock
+            // const reflection = material.getBlockByName('Reflection') as ReflectionBlock
+            // normalMap.texture = new Texture('assets/waterbump.png', scene, undefined, undefined, Texture.LINEAR_LINEAR_MIPLINEAR)
             // reflection.texture = this.mirror
-            reflection.texture = new Texture('assets/skybox.png', scene)
-            reflection.texture.coordinatesMode = Texture.EQUIRECTANGULAR_MODE
-            this.water.material = material
+            // reflection.texture.coordinatesMode = Texture.EQUIRECTANGULAR_MODE
+            // reflection.texture.isCube = true
+            // this.water.material = material
 
             this.water.material!.onBindObservable.add(() => {
               this.mirror.mirrorPlane = Plane.FromPositionAndNormal(this.water.position, Vector3.Down())

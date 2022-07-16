@@ -18,7 +18,7 @@ export class Sky {
     this.skybox.applyFog = false
     const skyboxMaterial = new StandardMaterial('skyBox', scene)
     skyboxMaterial.emissiveTexture = new Texture('assets/skybox.png', scene, undefined, false, Texture.NEAREST_SAMPLINGMODE)
-    skyboxMaterial.emissiveTexture.coordinatesMode = Texture.EQUIRECTANGULAR_MODE
+    skyboxMaterial.emissiveColor = Color3.White().scale(.125)
     skyboxMaterial.disableLighting = true
     skyboxMaterial.diffuseColor = new Color3(0, 0, 0)
     skyboxMaterial.specularColor = new Color3(0, 0, 0)
