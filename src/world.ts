@@ -9,10 +9,12 @@ import {
   DirectionalLight,
   Engine,
   HemisphericLight,
+  KeyboardEventTypes,
   MirrorTexture,
   NodeMaterial,
   PBRMaterial,
   Plane,
+  PointerEventTypes,
   Ray,
   ReflectionBlock,
   Scene,
@@ -50,6 +52,9 @@ export class World {
   private npcSceneCameraTarget = Vector3.Zero()
   private npcSceneCamera = 0
 
+  private cameraTargetRadius = 10
+  private timeSinceCameraHit = 0
+
   private story = new Story(this.ui)
   private npc = new Npc()
 
@@ -60,26 +65,29 @@ export class World {
   constructor(private scene: Scene, private ui: Ui, engine: Engine, canvas: HTMLCanvasElement) {
     scene.fogMode = Scene.FOGMODE_EXP2
     scene.fogDensity = 0.00125
-    scene.fogStart = 500
-    scene.fogEnd = 1000
+    scene.fogEnd = 500
+    scene.fogStart = scene.fogEnd / 2
     scene.clearColor = new Color4(.5, .667, 1)
     scene.clearColor = new Color4(.667, .822, 1)
     scene.clearColor = new Color4(1, 1, 1, 0)
+    // scene.clearColor = Color3.Random().toColor4()
+    // scene.clearColor = new Color3(0, 0, 0).toColor4()
     // scene.clearColor = new Color4(1, .7, .5) // evening
     scene.ambientColor = new Color3(scene.clearColor.r, scene.clearColor.g, scene.clearColor.b)
     scene.fogColor = new Color3(scene.clearColor.r, scene.clearColor.g, scene.clearColor.b)
 
     this.clearColor = scene.clearColor
 
-    this.camera = new ArcRotateCamera('Camera', Math.PI / 2, Math.PI / 2, 2, Vector3.Zero(), scene)
-    this.camera.attachControl(canvas, true)
-    this.camera.upperRadiusLimit = 10
-    this.camera.lowerRadiusLimit = 1
+    this.camera = new ArcRotateCamera('Camera', Math.PI / 2, Math.PI / 2, this.cameraTargetRadius, Vector3.Zero(), scene)
+    this.camera.attachControl(canvas, true, true)
+    this.camera.upperRadiusLimit = 17.5
+    this.camera.lowerRadiusLimit = 2.5
     this.camera.upperBetaLimit = Math.PI / 2 + Math.PI / 4
-    this.camera.fov = 1.333
-    this.camera.minZ = 0.1
-    this.camera.maxZ = 1000
+    this.camera.fov = .5//1.333
+    this.camera.minZ = 0.5
+    this.camera.maxZ = 500
     ;(this.camera.inputs.attached['mousewheel'] as ArcRotateCameraMouseWheelInput).wheelPrecision = 64
+    // ;(this.camera.inputs.attached['mousewheel'] as ArcRotateCameraMouseWheelInput).detachControl()
 
     const light1: HemisphericLight = new HemisphericLight('light1', new Vector3(0, 1, 0), scene)
     light1.specular = Color3.Black()
@@ -87,6 +95,7 @@ export class World {
     light1.intensity = .667
     const sun: DirectionalLight = new DirectionalLight('Sun', new Vector3(-.75, -.5, 0).normalize(), scene)
     sun.intensity = 1.333
+    // light1.diffuse = new Color3(.4, .6, 1)
     sun.shadowMinZ = this.camera.minZ
     sun.shadowMaxZ = this.camera.maxZ
 
@@ -99,7 +108,7 @@ export class World {
     // this.shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_LOW
     this.shadowGenerator.lambda = .9
     this.shadowGenerator.bias = .005
-    this.shadowGenerator.normalBias = .05
+    this.shadowGenerator.normalBias = .0125
     this.shadowGenerator.stabilizeCascades = true
     this.shadowGenerator.shadowMaxZ = this.camera.maxZ / 2
     this.shadowGenerator.splitFrustum()
@@ -136,8 +145,8 @@ export class World {
         }
       })
 
-      const worldEdge = result.meshes.find((x: AbstractMesh) => x.name === 'Plane.003')!
-      ;(worldEdge.material as PBRMaterial).emissiveColor = new Color3(1, .25, .5).scale(2.25)
+      // const worldEdge = result.meshes.find((x: AbstractMesh) => x.name === 'Plane.003')!
+      // ;(worldEdge.material as PBRMaterial).emissiveColor = new Color3(1, .25, .5).scale(2.25)
 
       result.meshes.forEach((mesh: AbstractMesh) => {
         if (mesh.name === 'Plane.001') { // water
@@ -171,6 +180,24 @@ export class World {
           } catch (ignored) {}
         }
       })
+    })
+
+    let tabPressed = false
+
+    scene.onKeyboardObservable.add(eventData => {
+      if (eventData.event.key !== ' ') return
+
+      switch (eventData.type) {
+        case KeyboardEventTypes.KEYDOWN:
+          if (!tabPressed) {
+            this.postProcess.toggleFilmSimulation()
+          }
+          tabPressed = true
+          break
+        case KeyboardEventTypes.KEYUP:
+          tabPressed = false
+          break
+      }
     })
   }
 
@@ -226,8 +253,28 @@ export class World {
     const ray = new Ray(t, dir, d)
     const hits = ray.intersectsMeshes(this.meshes)
 
-    if (hits?.[0]?.hit) {
-      this.camera.setPosition(Vector3.Lerp(this.camera.position, hits[0]!.pickedPoint!.subtract(dir), .125))
+    if (this.scene.deltaTime > 0) {
+      if (hits?.[0]?.hit) {
+        this.camera.setPosition(Vector3.Lerp(this.camera.position, hits[0]!.pickedPoint!.subtract(dir), .005 * this.scene.deltaTime))
+        this.timeSinceCameraHit = 0
+      } else {
+        const ray = new Ray(t, dir, this.cameraTargetRadius)
+        const hits = ray.intersectsMeshes(this.meshes)
+
+        if (hits?.[0]?.hit) {
+          this.camera.setPosition(Vector3.Lerp(this.camera.position, hits[0]!.pickedPoint!.subtract(dir), .005 * this.scene.deltaTime))
+          this.timeSinceCameraHit = 0
+        } else {
+          this.timeSinceCameraHit += this.scene.deltaTime
+
+          // Allow the user to set the radius again 1 second after the camera hitting stuff
+          if (this.timeSinceCameraHit < 1000) {
+            this.camera.setPosition(Vector3.Lerp(this.camera.position, t.add(dir.scale(this.cameraTargetRadius)), .005 * this.scene.deltaTime))
+          } else {
+            this.cameraTargetRadius = d
+          }
+        }
+      }
     }
 
     this.skybox.update()

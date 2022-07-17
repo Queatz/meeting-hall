@@ -1,7 +1,7 @@
 import {
   AbstractMesh,
   Camera,
-  Color3,
+  Color3, ColorCorrectionPostProcess,
   DefaultRenderingPipeline,
   Engine,
   MeshBuilder,
@@ -15,12 +15,15 @@ import {
 } from '@babylonjs/core'
 
 export class PostProcess {
-  constructor(scene: Scene, camera: Camera, engine: Engine, sunDirection: Vector3, excludeMeshes: Array<AbstractMesh>) {
 
-    const quality = 1
+  private film?: ColorCorrectionPostProcess
+
+  constructor(private scene: Scene, private camera: Camera, engine: Engine, sunDirection: Vector3, excludeMeshes: Array<AbstractMesh>) {
+
+    const quality = 0
 
     const pipeline = new DefaultRenderingPipeline('Default Pipeline', true, scene, [ camera ])
-    pipeline.samples = 4
+    pipeline.samples = 2
     pipeline.fxaaEnabled = true
 
     if (quality >= 1) {
@@ -75,13 +78,6 @@ export class PostProcess {
       godrays.excludedMeshes = excludeMeshes
     }
 
-    // const lutPostProcess = new ColorCorrectionPostProcess(
-    //   'Color Correction',
-    //   'assets/Fuji XTrans III - Classic Chrome.png',
-    //   1.0,
-    //   camera
-    // )
-
     if (quality >= 2) {
       const ssao = new SSAO2RenderingPipeline('ssaopipeline', scene, .667, [camera])
       ssao.totalStrength = .75
@@ -94,9 +90,35 @@ export class PostProcess {
       //   1,
       //   camera
       // )
-      // motionBlur.isObjectBased = false
+      // // motionBlur.isObjectBased = false
       // motionBlur.motionBlurSamples = 18
       // motionBlur.motionStrength = .125
     }
+
+    this.toggleFilmSimulation(localStorage.getItem('film'))
+  }
+
+  toggleFilmSimulation(film?: string | null) {
+    const luts = [
+      'assets/color.png',
+      'assets/Fuji XTrans III - Classic Chrome.png',
+      'assets/lut.png',
+      'assets/dusk.png',
+      'assets/wash.png',
+      'assets/ultra.png',
+      'assets/book.png',
+    ]
+
+    const i = luts.indexOf(this.film?.colorTableUrl || '') + 1
+    const value = film ?? luts[i >= luts.length ? 0 : i]
+    this.film?.dispose()
+    this.film = new ColorCorrectionPostProcess(
+      'Color Correction',
+      value,
+      1.0,
+      this.camera
+    )
+
+    localStorage.setItem('film', value)
   }
 }

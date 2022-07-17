@@ -18,7 +18,7 @@ export class Player {
   player!: AbstractMesh
   target!: AbstractMesh
 
-  private input = new PlayerInput(this.scene)
+  input = new PlayerInput(this.scene)
 
   private skeleton!: Skeleton
   private playerAnimations = new Animations()
