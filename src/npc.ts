@@ -2,7 +2,7 @@ import { AbstractMesh, TransformNode } from "@babylonjs/core";
 
 export class Npc {
 
-  npcs = new Array<AbstractMesh | TransformNode>()
+  npcs = new Array<TransformNode>()
 
   addFromMeshes(meshes: Array<AbstractMesh>) {
     meshes.forEach(mesh => {
@@ -20,11 +20,12 @@ export class Npc {
     })
   }
 
-  getNpcData(npc: AbstractMesh | TransformNode): string {
+  getNpcData(npc: TransformNode): string {
     return Npc.getNpcNode(npc)?.metadata?.gltf?.extras?.npc || ''
   }
 
-  private static getNpcNode(npc: AbstractMesh | TransformNode): TransformNode | undefined {
+  private static getNpcNode(npc: TransformNode): TransformNode | undefined {
+    if (npc.name.startsWith('NPC')) return npc
     return npc.getChildTransformNodes(true, node => node.name.startsWith('NPC'))?.[0]
   }
 }

@@ -65,7 +65,7 @@ export class Player {
       })
     })
 
-    this.ui.conversation("Welcome to Seashore Village", "Click or WASD to walk, Shift or Right-click to run, Arrows or Drag to look, Alt + Up/Down to zoom", [
+    this.ui.conversation("Welcome to Jacob\'s Village", "Click or WASD to walk, Shift or Right-click to run, Arrows or Drag to look, Alt + Up/Down to zoom", [
       [ 'Close', () => this.ui.clear() ]
     ])
   }

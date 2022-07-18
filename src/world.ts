@@ -64,7 +64,7 @@ export class World {
 
   constructor(private scene: Scene, private ui: Ui, engine: Engine, canvas: HTMLCanvasElement) {
     scene.fogMode = Scene.FOGMODE_EXP2
-    scene.fogDensity = 0.00125
+    scene.fogDensity = 0.00125 / 4
     scene.fogEnd = 500
     scene.fogStart = scene.fogEnd / 2
     scene.clearColor = new Color4(.5, .667, 1)
