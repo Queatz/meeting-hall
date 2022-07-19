@@ -8,6 +8,7 @@ import { HeatherStory } from "./heather.story";
 import { BaileyStory } from "./bailey.story";
 import { StephanieStory } from "./stephanie.story";
 import { Sign1Story } from "./sign1.story";
+import { AlexStory } from "./alex.story";
 
 export class Story {
 
@@ -20,6 +21,7 @@ export class Story {
     ['bailey']: new BaileyStory(),
     ['stephanie']: new StephanieStory(),
     ['sign 1']: new Sign1Story(),
+    ['alex']: new AlexStory(),
   }
 
   private readonly data: any = {}

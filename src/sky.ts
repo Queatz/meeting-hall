@@ -8,21 +8,24 @@ import {
   Texture,
   Vector3
 } from '@babylonjs/core'
+import { World } from "./world";
 
 export class Sky {
 
-  skybox!: AbstractMesh
+  skybox!: Mesh
 
-  constructor(private scene: Scene) {
+  constructor(private world: World, private scene: Scene) {
     this.skybox = MeshBuilder.CreateSphere('skyBox', { diameter: scene.activeCamera!.maxZ * 0.9, segments: 16, sideOrientation: Mesh.BACKSIDE }, scene)
     this.skybox.applyFog = false
     const skyboxMaterial = new StandardMaterial('skyBox', scene)
-    skyboxMaterial.emissiveTexture = new Texture('assets/skybox.png', scene, undefined, false, Texture.NEAREST_SAMPLINGMODE)
-    skyboxMaterial.emissiveColor = Color3.White().scale(.0125)
+    skyboxMaterial.emissiveTexture = new Texture('assets/skybox-dusk.png', scene, undefined, false, Texture.NEAREST_SAMPLINGMODE)
+    // skyboxMaterial.emissiveColor = scene.ambientColor.scale(.125)
     skyboxMaterial.disableLighting = true
-    skyboxMaterial.diffuseColor = new Color3(0, 0, 0)
-    skyboxMaterial.specularColor = new Color3(0, 0, 0)
+    skyboxMaterial.diffuseColor = scene.ambientColor
+    skyboxMaterial.specularColor = Color3.Black()
     this.skybox.material = skyboxMaterial
+
+    // this.world.addOutlineMesh(this.skybox)
   }
 
   update() {

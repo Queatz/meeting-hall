@@ -59,15 +59,19 @@ export class Player {
 
         this.world.shadowGenerator.addShadowCaster(mesh)
 
+        if (mesh instanceof Mesh) {
+          this.world.addOutlineMesh(mesh)
+        }
+
         try {
           mesh.receiveShadows = true
         } catch (ignored) {}
       })
     })
 
-    this.ui.conversation("Welcome to Jacob\'s Village", "Click or WASD to walk, Shift or Right-click to run, Arrows or Drag to look, Alt + Up/Down to zoom", [
-      [ 'Close', () => this.ui.clear() ]
-    ])
+    // this.ui.conversation("Welcome to Jacob\'s Village", "Click or WASD to walk, Shift or Right-click to run, Arrows or Drag to look, Alt + Up/Down to zoom", [
+    //   [ 'Close', () => this.ui.clear() ]
+    // ])
   }
 
   update() {
@@ -75,8 +79,8 @@ export class Player {
       this.player.position.copyFrom(this.world.startingPoint)
     }
 
-    const run = this.input.key('Shift') || (!this.ui.blockPointer && this.input.button(2))
-    const s = 0.005 * this.scene.deltaTime * (this.input.key('q') ? 10 : run ? 1 : 0.5)
+    const run = this.input.key('Shift') || this.input.key('q') || (!this.ui.blockPointer && this.input.button(2))
+    const s = 0.005 * this.scene.deltaTime * (run ? 1 : 0.5)
 
     let x = 0, z = 0
 
@@ -122,7 +126,7 @@ export class Player {
       this.player.moveWithCollisions(new Vector3(0, -0.005 * this.scene.deltaTime, 0))
     }
 
-    const ray = new Ray(this.player.position, Vector3.Up()).intersectsMesh(this.world.ground)
+    const ray = new Ray(this.player.position, Vector3.Up(), 1).intersectsMesh(this.world.ground)
 
     if (ray.hit) {
       this.player.position.y = ray.pickedPoint!.y

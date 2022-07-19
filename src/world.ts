@@ -2,14 +2,14 @@ import {
   AbstractMesh,
   AnimationGroup,
   ArcRotateCamera,
-  ArcRotateCameraMouseWheelInput,
+  ArcRotateCameraMouseWheelInput, BoundingSphere,
   CascadedShadowGenerator,
   Color3,
   Color4,
   DirectionalLight,
   Engine,
-  HemisphericLight,
-  KeyboardEventTypes,
+  HemisphericLight, HighlightLayer,
+  KeyboardEventTypes, Mesh,
   MirrorTexture,
   NodeMaterial,
   PBRMaterial,
@@ -18,7 +18,7 @@ import {
   Ray,
   ReflectionBlock,
   Scene,
-  SceneLoader,
+  SceneLoader, ShadowGenerator,
   Texture,
   TextureBlock,
   TransformNode,
@@ -42,6 +42,8 @@ export class World {
   startingPoint: Vector3 = new Vector3(3, 1, 140)
 
   private skybox: Sky
+  private sun: DirectionalLight
+  private ambience: HemisphericLight
   private postProcess: PostProcess
   private clearColor: Color4
 
@@ -63,16 +65,16 @@ export class World {
   }
 
   constructor(private scene: Scene, private ui: Ui, engine: Engine, canvas: HTMLCanvasElement) {
+    const cameraMaxZ = 500
+
     scene.fogMode = Scene.FOGMODE_EXP2
-    scene.fogDensity = 0.00125 / 4
-    scene.fogEnd = 500
-    scene.fogStart = scene.fogEnd / 2
+    scene.fogDensity = .0015
     scene.clearColor = new Color4(.5, .667, 1)
     scene.clearColor = new Color4(.667, .822, 1)
     scene.clearColor = new Color4(1, 1, 1, 0)
     // scene.clearColor = Color3.Random().toColor4()
     // scene.clearColor = new Color3(0, 0, 0).toColor4()
-    // scene.clearColor = new Color4(1, .7, .5) // evening
+    scene.clearColor = new Color4(1, .7, .5) // evening
     scene.ambientColor = new Color3(scene.clearColor.r, scene.clearColor.g, scene.clearColor.b)
     scene.fogColor = new Color3(scene.clearColor.r, scene.clearColor.g, scene.clearColor.b)
 
@@ -85,37 +87,49 @@ export class World {
     this.camera.upperBetaLimit = Math.PI / 2 + Math.PI / 4
     this.camera.fov = .5//1.333
     this.camera.minZ = 0.5
-    this.camera.maxZ = 500
+    this.camera.maxZ = cameraMaxZ
     ;(this.camera.inputs.attached['mousewheel'] as ArcRotateCameraMouseWheelInput).wheelPrecision = 64
     // ;(this.camera.inputs.attached['mousewheel'] as ArcRotateCameraMouseWheelInput).detachControl()
 
-    const light1: HemisphericLight = new HemisphericLight('light1', new Vector3(0, 1, 0), scene)
-    light1.specular = Color3.Black()
-    light1.diffuse = scene.ambientColor
-    light1.intensity = .667
-    const sun: DirectionalLight = new DirectionalLight('Sun', new Vector3(-.75, -.5, 0).normalize(), scene)
-    sun.intensity = 1.333
-    // light1.diffuse = new Color3(.4, .6, 1)
-    sun.shadowMinZ = this.camera.minZ
-    sun.shadowMaxZ = this.camera.maxZ
+    this.sun = new DirectionalLight('Sun', new Vector3(-2, -.5, 0).normalize(), scene)
+    this.sun.intensity = 2
+    this.sun.specular = scene.ambientColor
+    this.sun.diffuse = scene.ambientColor
+    this.sun.shadowMinZ = this.camera.maxZ / 6
+    this.sun.shadowMaxZ = this.camera.maxZ / 3
 
-    this.skybox = new Sky(scene)
-    this.postProcess =  new PostProcess(scene, this.camera, engine, sun.direction, [ this.skybox.skybox ])
+    this.ambience = new HemisphericLight('ambience', this.sun.direction.negate(), scene)
+    this.ambience.specular = scene.ambientColor
+    this.ambience.diffuse = scene.ambientColor
+    // this.ambience.diffuse = new Color3(.4, .6, 1)
+    this.ambience.intensity = 0.01
 
-    this.shadowGenerator = new CascadedShadowGenerator(1024 * .75, sun)
-    this.shadowGenerator.transparencyShadow = true
-    // this.shadowGenerator.enableSoftTransparentShadow = true
-    // this.shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_LOW
-    this.shadowGenerator.lambda = .9
+    this.skybox = new Sky(this, scene)
+    this.postProcess = new PostProcess(scene, this.camera, engine, this.sun.direction, [ this.skybox.skybox ])
+
+    this.shadowGenerator = new CascadedShadowGenerator(768/2, this.sun)
+    this.shadowGenerator.usePercentageCloserFiltering = true
     this.shadowGenerator.bias = .005
-    this.shadowGenerator.normalBias = .0125
+    this.shadowGenerator.normalBias = .01
     this.shadowGenerator.stabilizeCascades = true
-    this.shadowGenerator.shadowMaxZ = this.camera.maxZ / 2
+    this.shadowGenerator.frustumEdgeFalloff = 0.25
+    // this.shadowGenerator.forceBackFacesOnly = true
+    this.shadowGenerator.shadowMaxZ = this.camera.maxZ / 3
     this.shadowGenerator.splitFrustum()
 
-    this.mirror = new MirrorTexture('main', 1024, scene, true)
+    this.shadowGenerator.getShadowMap()!.getCustomRenderList = (layer, renderList, renderListLength) => {
+      if (!renderList) {
+        return null
+      }
+
+      const cameraSphere = BoundingSphere.CreateFromCenterAndRadius(this.camera.position, this.shadowGenerator.shadowMaxZ * .75)
+
+      return renderList!.filter(x => x !== this.ground && BoundingSphere.Intersects(x.getBoundingInfo().boundingSphere, cameraSphere))
+    }
+
+    this.mirror = new MirrorTexture('main', 512, scene, true)
     this.mirror.level = 1
-    this.mirror.renderList = [this.skybox.skybox]
+    this.mirror.renderList = [ this.skybox.skybox ]
     this.scene.customRenderTargets.push(this.mirror)
 
     SceneLoader.ImportMeshAsync('', '/assets/', 'forest.glb', scene).then((result: ISceneLoaderAsyncResult) => {
@@ -136,8 +150,6 @@ export class World {
       this.npc.addFromMeshes(result.meshes)
       this.npc.addFromTransformNodes(result.transformNodes)
       this.meshes = result.meshes
-
-      console.log(result.meshes)
 
       result.meshes.forEach((mesh: AbstractMesh) => {
         if (mesh.skeleton && mesh.getMeshUniformBuffer()) {
@@ -171,13 +183,27 @@ export class World {
             mesh.material.specularIntensity = Math.min(mesh.material.specularIntensity, .1)
           }
 
-          this.shadowGenerator.addShadowCaster(mesh)
+          if (mesh.name.startsWith('Water')) {
 
-          mesh.checkCollisions = true
+          } else {
+            if (mesh !== this.ground) {
+              this.shadowGenerator.addShadowCaster(mesh)
+            }
 
-          try {
-            mesh.receiveShadows = true
-          } catch (ignored) {}
+            mesh.checkCollisions = true
+
+            if (mesh instanceof Mesh) {
+              if(mesh !== this.ground) {
+                this.addOutlineMesh(mesh)
+              }
+            }
+
+            try {
+              mesh.receiveShadows = true
+            } catch (ignored) {
+
+            }
+          }
         }
       })
     })
@@ -199,6 +225,10 @@ export class World {
           break
       }
     })
+  }
+
+  addOutlineMesh(mesh: Mesh) {
+    this.postProcess.addOutlineMesh(mesh)
   }
 
   update() {
@@ -277,6 +307,8 @@ export class World {
       }
     }
 
+    this.sun.position.copyFrom(this.camera.position.subtract(this.sun.direction.scale(this.camera.maxZ * .8)))
+
     this.skybox.update()
 
     const waterRay = new Ray(this.camera.position, Vector3.Up()).intersectsMesh(this.water)
@@ -292,7 +324,7 @@ export class World {
       this.scene.clearColor = this.clearColor
       this.scene.fogColor = new Color3(this.scene.clearColor.r, this.scene.clearColor.g, this.scene.clearColor.b)
       this.scene.ambientColor = new Color3(this.scene.clearColor.r, this.scene.clearColor.g, this.scene.clearColor.b)
-      this.scene.fogDensity = .0025
+      this.scene.fogDensity = .0015
       this.skybox.skybox.applyFog = false
     }
   }
