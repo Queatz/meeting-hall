@@ -1,15 +1,17 @@
 import {
   AbstractMesh,
   Camera,
-  Color3, ColorCorrectionPostProcess,
+  Color3,
+  ColorCorrectionPostProcess,
   DefaultRenderingPipeline,
-  Engine, HighlightLayer, ImageProcessingPostProcess, Mesh,
+  Engine,
+  Mesh,
   MeshBuilder,
   MotionBlurPostProcess,
   Scene,
-  SSAO2RenderingPipeline, SSAORenderingPipeline,
+  SSAO2RenderingPipeline,
   StandardMaterial,
-  Texture, TonemappingOperator,
+  Texture,
   Vector3,
   VolumetricLightScatteringPostProcess
 } from '@babylonjs/core'
@@ -19,11 +21,12 @@ export class PostProcess {
   private film?: ColorCorrectionPostProcess
   // private outline?: HighlightLayer
 
-  private godrays!: VolumetricLightScatteringPostProcess
+  private godrays?: VolumetricLightScatteringPostProcess
+  private motionBlur?: MotionBlurPostProcess;
 
   constructor(private scene: Scene, private camera: Camera, engine: Engine, private sunDirection: Vector3, excludeMeshes: Array<AbstractMesh>) {
 
-    const quality = 1
+    const quality = 2
 
     const pipeline = new DefaultRenderingPipeline('Default Pipeline', true, scene, [ camera ])
     pipeline.samples = 2
@@ -43,11 +46,11 @@ export class PostProcess {
       // pipeline.imageProcessing.toneMappingEnabled = true
       // pipeline.imageProcessing.toneMappingType = TonemappingOperator.Photographic
 
-      pipeline.bloomEnabled = true
-      pipeline.bloomThreshold = .8
-      pipeline.bloomWeight = .5
-      pipeline.bloomKernel = 96
-      pipeline.bloomScale = .25
+      // pipeline.bloomEnabled = true
+      // pipeline.bloomThreshold = .6
+      // pipeline.bloomWeight = .5
+      // pipeline.bloomKernel = 96
+      // pipeline.bloomScale = .2
 
       this.godrays = new VolumetricLightScatteringPostProcess(
         'godrays',
@@ -84,27 +87,20 @@ export class PostProcess {
 
     if (quality >= 2) {
       const ssao = new SSAO2RenderingPipeline('ssaopipeline', scene, .667, [camera])
-      ssao.totalStrength = .75
-      ssao.samples = 12
+      ssao.totalStrength = .667
+      ssao.samples = 15
       ssao.radius = 1
 
-      // const motionBlur = new MotionBlurPostProcess(
-      //   "Motion Blur Post Process",
-      //   scene,
-      //   1,
-      //   camera
-      // )
-      // // motionBlur.isObjectBased = false
-      // motionBlur.motionBlurSamples = 18
-      // motionBlur.motionStrength = .125
+      this.motionBlur = new MotionBlurPostProcess(
+        "Motion Blur Post Process",
+        scene,
+          1,
+        camera
+      )
+      this.motionBlur.isObjectBased = false
+      this.motionBlur.motionBlurSamples = 8
+      this.motionBlur.motionStrength = .05
     }
-
-    // const ssao = new SSAORenderingPipeline("ssao", scene, 1, [camera])
-    // ssao.fallOff = 0.00005
-    // ssao.area = 0.001
-    // ssao.radius = 0.00001
-    // ssao.totalStrength = 5.0
-    // ssao.base = 0
 
     // this.outline = new HighlightLayer("hl1", scene, { isStroke: true, blurVerticalSize: .125, blurHorizontalSize: .125, blurTextureSizeRatio: .75, mainTextureRatio: 1 })
 
@@ -112,7 +108,7 @@ export class PostProcess {
   }
 
   update() {
-    this.godrays.mesh.position.copyFrom(this.camera.position.subtract(this.sunDirection.scale(this.camera.maxZ * .8)))
+    this.godrays?.mesh.position.copyFrom(this.camera.position.subtract(this.sunDirection.scale(this.camera.maxZ * .8)))
   }
 
   addOutlineMesh(mesh: Mesh) {
@@ -150,5 +146,9 @@ export class PostProcess {
     }
 
     localStorage.setItem('film', value)
+  }
+
+  setPlayer(player: AbstractMesh) {
+    this.motionBlur?.excludeSkinnedMesh(player)
   }
 }

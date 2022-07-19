@@ -31,6 +31,8 @@ export class Player {
     SceneLoader.ImportMeshAsync('', '/assets/', 'girl.glb', scene).then(result => {
       this.player = result.meshes[0]
 
+      this.world.postProcess.setPlayer(this.player)
+
       this.player.position.copyFrom(this.world.startingPoint)
 
       this.player.collisionRetryCount = 5

@@ -44,7 +44,7 @@ export class World {
   private skybox: Sky
   private sun: DirectionalLight
   private ambience: HemisphericLight
-  private postProcess: PostProcess
+  postProcess: PostProcess
   private clearColor: Color4
 
   private player!: Player
@@ -74,7 +74,7 @@ export class World {
     scene.clearColor = new Color4(1, 1, 1, 0)
     // scene.clearColor = Color3.Random().toColor4()
     // scene.clearColor = new Color3(0, 0, 0).toColor4()
-    scene.clearColor = new Color4(1, .7, .5) // evening
+    // scene.clearColor = new Color4(1, .7, .5) // evening
     scene.ambientColor = new Color3(scene.clearColor.r, scene.clearColor.g, scene.clearColor.b)
     scene.fogColor = new Color3(scene.clearColor.r, scene.clearColor.g, scene.clearColor.b)
 
@@ -91,8 +91,8 @@ export class World {
     ;(this.camera.inputs.attached['mousewheel'] as ArcRotateCameraMouseWheelInput).wheelPrecision = 64
     // ;(this.camera.inputs.attached['mousewheel'] as ArcRotateCameraMouseWheelInput).detachControl()
 
-    this.sun = new DirectionalLight('Sun', new Vector3(-2, -.5, 0).normalize(), scene)
-    this.sun.intensity = 2
+    this.sun = new DirectionalLight('Sun', new Vector3(-1, -.75, 0).normalize(), scene)
+    this.sun.intensity = 1
     this.sun.specular = scene.ambientColor
     this.sun.diffuse = scene.ambientColor
     this.sun.shadowMinZ = this.camera.maxZ / 6
@@ -102,7 +102,7 @@ export class World {
     this.ambience.specular = scene.ambientColor
     this.ambience.diffuse = scene.ambientColor
     // this.ambience.diffuse = new Color3(.4, .6, 1)
-    this.ambience.intensity = 0.01
+    this.ambience.intensity = .667
 
     this.skybox = new Sky(this, scene)
     this.postProcess = new PostProcess(scene, this.camera, engine, this.sun.direction, [ this.skybox.skybox ])
