@@ -2,35 +2,34 @@ import {
   AbstractMesh,
   AnimationGroup,
   ArcRotateCamera,
-  ArcRotateCameraMouseWheelInput, BoundingSphere,
+  ArcRotateCameraMouseWheelInput,
+  BoundingSphere,
   CascadedShadowGenerator,
   Color3,
   Color4,
   DirectionalLight,
   Engine,
-  HemisphericLight, HighlightLayer,
-  KeyboardEventTypes, Mesh,
+  HemisphericLight,
+  ISceneLoaderAsyncResult,
+  KeyboardEventTypes,
+  Mesh,
+  MeshBuilder,
   MirrorTexture,
-  NodeMaterial,
   PBRMaterial,
-  Plane,
-  PointerEventTypes,
   Ray,
-  ReflectionBlock,
   Scene,
-  SceneLoader, ShadowGenerator,
+  SceneLoader,
   Texture,
-  TextureBlock,
   TransformNode,
   Vector3
 } from '@babylonjs/core'
 import { Sky } from './sky'
 import { PostProcess } from './postProcess'
 import { Player } from './player'
-import { ISceneLoaderAsyncResult } from '@babylonjs/core'
 import { Ui } from './ui'
 import { Npc } from "./npc";
 import { Story } from "./story/story";
+import { WaterMaterial } from "@babylonjs/materials";
 
 export class World {
 
@@ -39,6 +38,7 @@ export class World {
   camera: ArcRotateCamera
   shadowGenerator: CascadedShadowGenerator
   mirror: MirrorTexture
+  waterMaterial?: WaterMaterial
   startingPoint: Vector3 = new Vector3(3, 1, 140)
 
   private skybox: Sky
@@ -98,11 +98,15 @@ export class World {
     this.sun.shadowMinZ = this.camera.maxZ / 6
     this.sun.shadowMaxZ = this.camera.maxZ / 3
 
-    this.ambience = new HemisphericLight('ambience', this.sun.direction.negate(), scene)
+    this.ambience = new HemisphericLight('ambience', this.sun.direction, scene)
     this.ambience.specular = scene.ambientColor
     this.ambience.diffuse = scene.ambientColor
     // this.ambience.diffuse = new Color3(.4, .6, 1)
-    this.ambience.intensity = .667
+    this.ambience.intensity = .25
+    const ambience = new HemisphericLight('ambience', this.sun.direction.negate(), scene)
+    ambience.specular = scene.ambientColor
+    ambience.diffuse = scene.ambientColor
+    ambience.intensity = .25
 
     this.skybox = new Sky(this, scene)
     this.postProcess = new PostProcess(scene, this.camera, engine, this.sun.direction, [ this.skybox.skybox ])
@@ -151,46 +155,62 @@ export class World {
       this.npc.addFromTransformNodes(result.transformNodes)
       this.meshes = result.meshes
 
-      result.meshes.forEach((mesh: AbstractMesh) => {
-        if (mesh.skeleton && mesh.getMeshUniformBuffer()) {
-
-        }
-      })
+      // result.meshes.forEach((mesh: AbstractMesh) => {
+      //   if (mesh.skeleton && mesh.getMeshUniformBuffer()) {
+      //
+      //   }
+      // })
 
       // const worldEdge = result.meshes.find((x: AbstractMesh) => x.name === 'Plane.003')!
       // ;(worldEdge.material as PBRMaterial).emissiveColor = new Color3(1, .25, .5).scale(2.25)
 
+      this.waterMaterial = new WaterMaterial('Water', scene)
+      this.waterMaterial.bumpTexture = new Texture('assets/waterbump.png', scene)
+      ;(this.waterMaterial.bumpTexture as Texture).uScale = .5
+      ;(this.waterMaterial.bumpTexture as Texture).vScale = .5
+      this.waterMaterial.bumpHeight = .125
+      // this.waterMaterial.bumpSuperimpose = true
+      this.waterMaterial.waveHeight = 0
+      this.waterMaterial.waveLength = 0.5
+      this.waterMaterial.bumpAffectsReflection = true
+      this.waterMaterial.backFaceCulling = false
+      this.waterMaterial.addToRenderList(this.ground)
+      this.waterMaterial.addToRenderList(this.skybox.skybox)
+
       result.meshes.forEach((mesh: AbstractMesh) => {
         if (mesh.name === 'Plane.001') { // water
           this.water = mesh
+          this.water.material = this.waterMaterial!
 
-          NodeMaterial.ParseFromFileAsync("Water", "assets/water.json", scene).then((material: NodeMaterial) => {
-            material.backFaceCulling = false
-            // const normalMap = material.getBlockByName('Texture') as TextureBlock
-            // const reflection = material.getBlockByName('Reflection') as ReflectionBlock
-            // normalMap.texture = new Texture('assets/waterbump.png', scene, undefined, undefined, Texture.LINEAR_LINEAR_MIPLINEAR)
-            // reflection.texture = this.mirror
-            // reflection.texture.coordinatesMode = Texture.EQUIRECTANGULAR_MODE
-            // reflection.texture.isCube = true
-            // this.water.material = material
-
-            this.water.material!.onBindObservable.add(() => {
-              this.mirror.mirrorPlane = Plane.FromPositionAndNormal(this.water.position, Vector3.Down())
-            })
-          })
+          // this.water.material!.onBindObservable.add(() => {
+          //   this.mirror.mirrorPlane = Plane.FromPositionAndNormal(this.water.position, Vector3.Down())
+          // })
         } else {
           if (mesh.material instanceof PBRMaterial) {
             mesh.material.specularIntensity = Math.min(mesh.material.specularIntensity, .1)
           }
 
           if (mesh.name.startsWith('Water')) {
-
+            mesh.material = this.waterMaterial!
           } else {
             if (mesh !== this.ground) {
               this.shadowGenerator.addShadowCaster(mesh)
+              // this.waterMaterial!.addToRenderList(mesh)
             }
 
-            mesh.checkCollisions = true
+
+            if (mesh.name.startsWith('Girl') || mesh.name.startsWith('Hair') || mesh.name.startsWith('Panties')) {
+              const collider = MeshBuilder.CreateCylinder('Collider', {
+                diameter: Math.min(mesh.getBoundingInfo().boundingBox.extendSizeWorld.z, mesh.getBoundingInfo().boundingBox.extendSizeWorld.x) / 16,
+                height: mesh.getBoundingInfo().boundingBox.extendSizeWorld.y * 2,
+              }, scene)
+              collider.setParent(mesh)
+              collider.position = new Vector3(0, mesh.getBoundingInfo().boundingBox.extendSizeWorld.y, 0)
+              collider.checkCollisions = true
+              collider.isVisible = false
+            } else {
+              mesh.checkCollisions = true
+            }
 
             if (mesh instanceof Mesh) {
               if(mesh !== this.ground) {

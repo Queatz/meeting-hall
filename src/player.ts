@@ -2,8 +2,8 @@ import { World } from './world'
 import {
   AbstractMesh,
   Mesh,
-  PBRMaterial,
-  Quaternion, Ray,
+  Quaternion,
+  Ray,
   Scene,
   SceneLoader,
   Skeleton,
@@ -36,6 +36,7 @@ export class Player {
       this.player.position.copyFrom(this.world.startingPoint)
 
       this.player.collisionRetryCount = 5
+      // todo is it using the ellipsoid?
       this.player.ellipsoidOffset = new Vector3(0, 1.05, 0)
 
       const target = new Mesh('Camera Target')
@@ -55,11 +56,12 @@ export class Player {
         this.world.mirror.renderList!.push(mesh)
         // mesh.alphaIndex = 0
 
-        if (mesh.material instanceof PBRMaterial) {
-          mesh.material.specularIntensity = Math.min(mesh.material.specularIntensity, .1)
-        }
+        // if (mesh.material instanceof PBRMaterial) {
+        //   mesh.material.specularIntensity = Math.min(mesh.material.specularIntensity, .1)
+        // }
 
         this.world.shadowGenerator.addShadowCaster(mesh)
+        this.world.waterMaterial!.addToRenderList(mesh)
 
         if (mesh instanceof Mesh) {
           this.world.addOutlineMesh(mesh)

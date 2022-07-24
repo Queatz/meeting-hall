@@ -34,6 +34,7 @@ module.exports = {
                 use: "ts-loader",
                 exclude: /node_modules/,
             },
+            { test: /\.fx$/, use: 'raw-loader' }
         ],
     },
     plugins: [

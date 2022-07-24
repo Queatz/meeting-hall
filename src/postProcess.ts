@@ -4,6 +4,7 @@ import {
   Color3,
   ColorCorrectionPostProcess,
   DefaultRenderingPipeline,
+  DepthRenderer,
   Engine,
   Mesh,
   MeshBuilder,
@@ -15,6 +16,7 @@ import {
   Vector3,
   VolumetricLightScatteringPostProcess
 } from '@babylonjs/core'
+import { OutlinePostProcess } from "./outlinePostProcess";
 
 export class PostProcess {
 
@@ -23,14 +25,15 @@ export class PostProcess {
 
   private godrays?: VolumetricLightScatteringPostProcess
   private motionBlur?: MotionBlurPostProcess;
+  private renderer!: DepthRenderer;
 
   constructor(private scene: Scene, private camera: Camera, engine: Engine, private sunDirection: Vector3, excludeMeshes: Array<AbstractMesh>) {
 
-    const quality = 2
+    const quality = -1
 
     const pipeline = new DefaultRenderingPipeline('Default Pipeline', true, scene, [ camera ])
-    pipeline.samples = 2
-    pipeline.fxaaEnabled = true
+    // pipeline.samples = 4
+    // pipeline.fxaaEnabled = true
 
     if (quality >= 1) {
       // pipeline.imageProcessingEnabled = true
@@ -85,25 +88,67 @@ export class PostProcess {
       this.godrays.excludedMeshes = excludeMeshes
     }
 
-    if (quality >= 2) {
+    if (quality >= 2 || quality < 0) {
       const ssao = new SSAO2RenderingPipeline('ssaopipeline', scene, .667, [camera])
       ssao.totalStrength = .667
-      ssao.samples = 15
+      ssao.samples = 16
       ssao.radius = 1
 
-      this.motionBlur = new MotionBlurPostProcess(
-        "Motion Blur Post Process",
-        scene,
-          1,
-        camera
-      )
-      this.motionBlur.isObjectBased = false
-      this.motionBlur.motionBlurSamples = 8
-      this.motionBlur.motionStrength = .05
+      // this.motionBlur = new MotionBlurPostProcess(
+      //   "Motion Blur Post Process",
+      //   scene,
+      //     1,
+      //   camera
+      // )
+      // this.motionBlur.isObjectBased = false
+      // this.motionBlur.motionBlurSamples = 8
+      // this.motionBlur.motionStrength = .05
+    }
+
+    if (quality < 0) {
+      const pixels = 1
+
+      this.renderer = scene.enableDepthRenderer(camera)
+       this.renderer.forceDepthWriteTransparentMeshes = true
+
+      scene.onReadyObservable.add(() => {
+        this.renderer.getDepthMap().resize({
+          width: scene.getEngine().getRenderWidth() * pixels,
+          height: scene.getEngine().getRenderHeight() * pixels,
+        })
+        this.renderer.getDepthMap().updateSamplingMode(Texture.NEAREST_SAMPLINGMODE)
+      })
+
+      engine.onResizeObservable.add(event => {
+        this.renderer.getDepthMap().resize({
+          width: scene.getEngine().getRenderWidth() * pixels,
+          height: scene.getEngine().getRenderHeight() * pixels,
+        })
+        this.renderer.getDepthMap().updateSamplingMode(Texture.NEAREST_SAMPLINGMODE)
+      })
+
+      const outline = new OutlinePostProcess('outline', this.renderer.getDepthMap(), pixels, camera)
+      outline.threshold = 0.05
+      outline.depthThreshold = 0.001
+      outline.edgeAmount = 4
+      outline.edgeOffset = 1.25
+
+      // const pp = new ScreenSpaceCurvaturePostProcess("Post", scene, 1, camera)
+      // pp.valley = 8
+      // pp.ridge = 0
+
+      // outline.adaptScaleToCurrentViewport = true
+      // outline.scaleMode = Engine.SCALEMODE_FLOOR
+
+      engine.onResizeObservable.add(event => {
+        outline.renderTargetSamplingMode = Texture.NEAREST_SAMPLINGMODE
+      //   outline.width = Math.floor(scene.getEngine().getRenderWidth() * pixels)
+      //   outline.height = Math.floor(scene.getEngine().getRenderHeight() * pixels)
+      })
     }
 
     // this.outline = new HighlightLayer("hl1", scene, { isStroke: true, blurVerticalSize: .125, blurHorizontalSize: .125, blurTextureSizeRatio: .75, mainTextureRatio: 1 })
-
+    //
     this.toggleFilmSimulation(localStorage.getItem('film'))
   }
 
@@ -112,7 +157,7 @@ export class PostProcess {
   }
 
   addOutlineMesh(mesh: Mesh) {
-    // this.outline?.addMesh(mesh, new Color3(1 / 256, 1 / 256, 1 / 256))
+    // this.outline?.addMesh(mesh, new Color3(1 / 256 / 2, 1 / 256 / 2, 1 / 256 / 2))
   }
 
   toggleFilmSimulation(film?: string | null) {
@@ -120,6 +165,8 @@ export class PostProcess {
       // '',
       'assets/color.png',
       'assets/colored pencil4.png',
+      // 'assets/story.png',
+      // 'assets/story3.png',
       // 'assets/forest.png',
       // 'assets/forest2.png',
       // 'assets/book.png',
@@ -138,7 +185,7 @@ export class PostProcess {
       this.film = new ColorCorrectionPostProcess(
         'Color Correction',
         value,
-        1.0,
+        1,
         this.camera
       )
     } else {

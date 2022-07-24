@@ -15,7 +15,7 @@ class App {
 
     setTimeout(() => canvas.focus())
 
-    const engine = new Engine(canvas, true)
+    const engine = new Engine(canvas, false)
     const scene = new Scene(engine)
     const ui = new Ui(engine)
     const world = new World(scene, ui, engine, canvas)
