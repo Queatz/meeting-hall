@@ -51,7 +51,7 @@ export class Ui {
     if (this.boxMesh) {
       this.boxMesh.isVisible = true
     } else {
-      this.boxMesh = this.createBox()
+      this.boxMesh = this.createBox(this.scene.getEngine().getRenderHeight() * (1 - .015))
     }
 
     this.text(person, 6, '#000000', 'bold')
@@ -87,7 +87,7 @@ export class Ui {
     click?: () => void
   ): AbstractMesh {
     const lineHeight = 1.25
-    const fontSize = 24
+    const fontSize = 32
     const font = style + ' ' + fontSize + 'px Arvo, sans-serif'
 
     const planeHeight = .025

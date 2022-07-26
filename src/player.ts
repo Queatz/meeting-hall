@@ -61,7 +61,7 @@ export class Player {
         // }
 
         this.world.shadowGenerator.addShadowCaster(mesh)
-        this.world.waterMaterial!.addToRenderList(mesh)
+        this.world.waterMaterial?.addToRenderList(mesh)
 
         if (mesh instanceof Mesh) {
           this.world.addOutlineMesh(mesh)
@@ -73,9 +73,9 @@ export class Player {
       })
     })
 
-    // this.ui.conversation("Welcome to Jacob\'s Village", "Click or WASD to walk, Shift or Right-click to run, Arrows or Drag to look, Alt + Up/Down to zoom", [
-    //   [ 'Close', () => this.ui.clear() ]
-    // ])
+    this.ui.conversation("Welcome to Jacob\'s Town", "Click or use WASD to walk, use Shift, W or Right-click to run, Arrows or Drag to look, Alt + Up/Down to zoom", [
+      [ 'Close', () => this.ui.clear() ]
+    ])
   }
 
   update() {

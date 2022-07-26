@@ -88,7 +88,7 @@ export class PostProcess {
       this.godrays.excludedMeshes = excludeMeshes
     }
 
-    if (quality >= 2 || quality < 0) {
+    if (quality >= 2 || quality <= -2) {
       const ssao = new SSAO2RenderingPipeline('ssaopipeline', scene, .667, [camera])
       ssao.totalStrength = .667
       ssao.samples = 16
@@ -164,7 +164,7 @@ export class PostProcess {
     const luts = [
       // '',
       'assets/color.png',
-      'assets/colored pencil4.png',
+      'assets/colored pencil4-2.png',
       // 'assets/story.png',
       // 'assets/story3.png',
       // 'assets/forest.png',
