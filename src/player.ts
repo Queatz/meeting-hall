@@ -53,7 +53,7 @@ export class Player {
       this.playerAnimations.load(result.animationGroups)
 
       result.meshes.forEach(mesh => {
-        this.world.mirror.renderList!.push(mesh)
+        this.world.mirror?.renderList?.push(mesh)
         // mesh.alphaIndex = 0
 
         // if (mesh.material instanceof PBRMaterial) {
@@ -73,9 +73,9 @@ export class Player {
       })
     })
 
-    this.ui.conversation("Welcome to Jacob\'s Town", "Click or use WASD to walk, use Shift, W or Right-click to run, Arrows or Drag to look, Alt + Up/Down to zoom", [
-      [ 'Close', () => this.ui.clear() ]
-    ])
+    // this.ui.conversation("Welcome to Jacob\'s Town", "Click or use WASD to walk, use Shift, W or Right-click to run, Arrows or Drag to look, Alt + Up/Down to zoom", [
+    //   [ 'Close', () => this.ui.clear() ]
+    // ])
   }
 
   update() {

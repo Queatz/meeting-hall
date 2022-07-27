@@ -25,6 +25,8 @@ export class Sky {
     skyboxMaterial.specularIntensity = 0
     this.skybox.material = skyboxMaterial
 
+    this.skybox.checkCollisions = true
+
     // this.skybox.isVisible = false
 
     // this.world.addOutlineMesh(this.skybox)
@@ -32,9 +34,11 @@ export class Sky {
 
   update() {
     if (this.scene.deltaTime) {
-      this.skybox.rotateAround(Vector3.Zero(), Vector3.Up(), this.scene.deltaTime * 0.0000125)
+      this.skybox.rotate(Vector3.Up(), this.scene.deltaTime * 0.0000125)
     }
 
-    this.skybox.position.copyFrom(this.scene.activeCamera!.position)
+    // if (Vector3.Dot(this.skybox.position, Vector3.One()) === 0) {
+      this.skybox.position.copyFrom(this.scene.activeCamera!.position)
+    // }
   }
 }

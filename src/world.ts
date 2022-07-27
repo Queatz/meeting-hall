@@ -11,11 +11,11 @@ import {
   Engine,
   HemisphericLight,
   ISceneLoaderAsyncResult,
-  KeyboardEventTypes,
+  KeyboardEventTypes, Material,
   Mesh,
   MeshBuilder,
   MirrorTexture,
-  PBRMaterial, PBRMetallicRoughnessMaterial,
+  PBRMaterial, PBRMetallicRoughnessMaterial, PBRSpecularGlossinessMaterial,
   Ray,
   Scene,
   SceneLoader,
@@ -37,10 +37,13 @@ import * as randn from "@stdlib/random-base-uniform";
 export class World {
 
   ground!: Mesh
+  edgeMesh?: Mesh
+  edgeBottom?: Mesh
   water?: AbstractMesh
+  waterEdges?: AbstractMesh
   camera: ArcRotateCamera
   shadowGenerator: CascadedShadowGenerator
-  mirror: MirrorTexture
+  mirror?: MirrorTexture
   waterMaterial?: WaterMaterial
   startingPoint: Vector3 = new Vector3(0, 0, 0)
 
@@ -70,18 +73,18 @@ export class World {
   }
 
   constructor(private scene: Scene, private ui: Ui, engine: Engine, canvas: HTMLCanvasElement) {
-    const cameraMaxZ = 2500 // 500
+    const cameraMaxZ = 5000 // 500
 
     scene.fogMode = Scene.FOGMODE_EXP2
-    scene.fogDensity = .001 / 10
+    scene.fogDensity = .001
     // scene.clearColor = new Color4(.5, .667, 1)
     // scene.clearColor = new Color4(.667, .822, 1)
-    // scene.clearColor = new Color4(1, 1, 1, 0)
+    scene.clearColor = new Color4(1, 1, 1, 1)
     // scene.clearColor = Color3.Random().toColor4()
     // scene.clearColor = new Color3(0, 0, 0).toColor4()
     // scene.clearColor = new Color4(1, .7, .5) // evening
     // scene.clearColor = new Color4(1, .667, .125).scale(.05)
-    scene.clearColor = new Color4(.8, .9, .95).scale(1)
+    // scene.clearColor = new Color4(.8, .9, .95).scale(1)
     scene.ambientColor = new Color3(scene.clearColor.r, scene.clearColor.g, scene.clearColor.b)
     scene.fogColor = new Color3(scene.clearColor.r, scene.clearColor.g, scene.clearColor.b)
 
@@ -138,15 +141,15 @@ export class World {
       return renderList!.filter(x => (x !== this.ground) && BoundingSphere.Intersects(x.getBoundingInfo().boundingSphere, cameraSphere))
     }
 
-    this.mirror = new MirrorTexture('main', 512, scene, true)
-    this.mirror.level = 1
-    this.mirror.renderList = [ this.skybox.skybox ]
-    this.scene.customRenderTargets.push(this.mirror)
+    // this.mirror = new MirrorTexture('main', 512, scene, true)
+    // this.mirror.level = 1
+    // this.mirror.renderList = [ this.skybox.skybox ]
+    // this.scene.customRenderTargets.push(this.mirror)
 
-    this.waterMaterial = new WaterMaterial('Water', scene, new Vector2(1024, 1024))
+    this.waterMaterial = new WaterMaterial('Water', scene, new Vector2(1024, 1024).scale(1))
     this.waterMaterial.bumpTexture = new Texture('assets/waterbump.png', scene)
-    ;(this.waterMaterial.bumpTexture as Texture).uScale = 16 * 4
-    ;(this.waterMaterial.bumpTexture as Texture).vScale = 16 * 4
+    ;(this.waterMaterial.bumpTexture as Texture).uScale = 16
+    ;(this.waterMaterial.bumpTexture as Texture).vScale = 16
     this.waterMaterial.bumpHeight = .125
     this.waterMaterial.bumpSuperimpose = true
     this.waterMaterial.waveHeight = 0//.1
@@ -282,83 +285,114 @@ export class World {
     groundMaterial.metallic = 1
     groundMaterial.roughness = 128
 
-    const ts = 8
+    const waterEdgesMaterial = new PBRMetallicRoughnessMaterial('Water edges', this.scene)
+    waterEdgesMaterial.baseColor = Color3.White().scale(1.25)
+    waterEdgesMaterial.roughness = 0
+    waterEdgesMaterial.metallic = 0
+    waterEdgesMaterial.alpha = 0.75
+    waterEdgesMaterial.alphaMode = Material.MATERIAL_ALPHABLEND
+    waterEdgesMaterial.zOffset = 2
+
+    const sectionSize = 100
+    const ts = 10
+    const numberOfTrees = sectionSize * ts
 
     const createGround = (xOffset: number, zOffset: number, seedOffset = 0) => {
-      const sectionSize = 256
 
-      const positions = new Float32Array(sectionSize * sectionSize * 3)
+      const positions = new Float32Array((sectionSize + 1) * (sectionSize + 1) * 3)
       const indices = [] as Array<number>
       const normals = [] as Array<number>
 
-      const entropy = new Entropy(4, 4 + seedOffset)
-      const entropy2 = new Entropy(32, 512 + seedOffset)
-      const groundEntropy = new Entropy(8, 8 + seedOffset)
+      const entropy = new Entropy(4 * 10 / ts, 4 + seedOffset)
+      const entropy2 = new Entropy(32 * 10 / ts, 512 + seedOffset)
+      const groundEntropy = new Entropy(8 * 10 / ts, 8 + seedOffset)
+      const riverEntropy = new Entropy(64 * 10 / ts, 64 + seedOffset)
 
       const rnd = randn.factory({ seed: 1 + seedOffset })
 
-      const h = rnd(16, 32)
+      const h = rnd(16, 64)
       const f1 = rnd(16, 32) * (rnd(0, 1) > .5 ? -1 : 1)
       const f2 = rnd(8, 16) * (rnd(0, 1) > .5 ? -1 : 1)
       const f3 = rnd(1.5, 3)
+      const f4 = rnd(2, 16)
       const water = rnd(.125, .5)
 
       console.log(h, f1, f2, f3, water)
 
       this.water?.dispose()
 
-      this.water = MeshBuilder.CreateGround('Water', {
+      this.water = MeshBuilder.CreatePlane('Water', {
         width: sectionSize * ts,
-        height: sectionSize * ts,
-        subdivisions: sectionSize
+        height: sectionSize * ts
       }, this.scene)
       this.water.position.x = sectionSize * ts / 2
       this.water.position.y = -32
       this.water.position.z = sectionSize * ts / 2
-      // this.water.rotate(Vector3.Right(), Math.PI / 2)
+      this.water.rotate(Vector3.Right(), Math.PI / 2)
+
+      this.waterEdges?.dispose()
+      this.waterEdges = MeshBuilder.CreateCylinder('Water edges', {
+        diameter: sectionSize * ts / Math.SQRT1_2,
+        height: 100 - 32,
+        cap: Mesh.NO_CAP,
+        tessellation: 4
+      }, this.scene)
+      this.waterEdges.position.x = sectionSize * ts / 2
+      this.waterEdges.position.y = -32 - (100 - 32) / 2
+      this.waterEdges.position.z = sectionSize * ts / 2
+      this.waterEdges.rotate(Vector3.Up(), Math.PI / 4)
+      this.waterEdges.material = waterEdgesMaterial
+      this.waterEdges.alphaIndex = 0
+
 
       if (this.waterMaterial) {
         this.water.material = this.waterMaterial
       }
 
-      const sample = (x: number, z: number) => {
-        const v = Math.min(groundEntropy.sample(x, z), Math.pow(entropy2.sample(x, z), f3)) - groundEntropy.sample(x, z) / f1 + entropy.sample(x, z) / f2
+      const mix = (a: number, b: number, factor: number) => a * (1 - factor) + b * factor
 
-        return (v < water ? Math.pow(groundEntropy.sample(x, z), .5) * (h / 16) : entropy.sample(x, z) * Math.pow((v - .5) * (1 / water), 2)) * (h / 8) +
-          (Math.max(water, v) - .5) * (1 / water) * h
+      const sample = (x: number, z: number) => {
+        // return entropy.sample(x, z) * 12
+
+        const v = Math.min(groundEntropy.sample(x, z), Math.pow(entropy2.sample(x, z), f3)) - groundEntropy.sample(x, z) / f1 + entropy.sample(x, z) / f2
+        const rH = .5
+        const rW = 1 / f4
+        const river = 1 - Math.pow(Math.min(rW, Math.abs(riverEntropy.sample(x, z) - rH)) / rW, 4)
+
+        return mix((v < water ? Math.pow(groundEntropy.sample(x, z), .5) * (h / 16) : entropy.sample(x, z) * Math.pow((v - .5) * (1 / water), 2)) * (h / 8) +
+          (Math.max(water, v) - .5) * (1 / water) * h, -32 - f4 * groundEntropy.sample(x, z), river)
       }
 
-      const startingElevation = sample((sectionSize / ts) / 2, (sectionSize / ts) / 2)
       this.startingPoint.x = sectionSize * ts / 2
       this.startingPoint.z = sectionSize * ts / 2
-      this.startingPoint.y = startingElevation
+      this.startingPoint.y = sample(this.startingPoint.x / ts, this.startingPoint.z / ts)
 
       const mesh = new Mesh('Ground', this.scene)
       mesh.material = groundMaterial
 
-      for (let z = zOffset * sectionSize; z < (zOffset + 1) * sectionSize; z++) {
-        for (let x = xOffset * sectionSize; x < (xOffset + 1) * sectionSize; x++) {
-          const i = (z * sectionSize + x) * 3
+      for (let z = zOffset * sectionSize; z < (zOffset + 1) * sectionSize + 1; z++) {
+        for (let x = xOffset * sectionSize; x < (xOffset + 1) * sectionSize + 1; x++) {
+          const i = (z * (sectionSize + 1) + x) * 3
           positions[i] = x * ts
           positions[i + 1] = sample(x, z)
           positions[i + 2] = z * ts
         }
       }
 
-      for (let z = 0; z < sectionSize - 1; z++) {
-        for (let x = 0; x < sectionSize - 1; x++) {
-          const i = z * sectionSize + x
+      for (let z = 0; z < sectionSize; z++) {
+        for (let x = 0; x < sectionSize; x++) {
+          const i = z * (sectionSize + 1) + x
 
           indices.push(
             i,
             i + 1,
-            i + sectionSize
+            i + sectionSize + 1
           )
 
           indices.push(
             i + 1,
+            i + sectionSize + 1 + 1,
             i + sectionSize + 1,
-            i + sectionSize,
           )
         }
       }
@@ -371,6 +405,24 @@ export class World {
       VertexData.ComputeNormals(positions, indices, normals)
       vertexData.applyToMesh(mesh, true)
 
+      const material = new PBRMetallicRoughnessMaterial('Edge', this.scene)
+      material.baseColor = groundMaterial.baseColor.scale(.5)
+
+      this.edgeMesh?.dispose()
+      this.edgeMesh = this.buildEdgeMesh(vertexData, sectionSize, material)
+
+      this.edgeBottom?.dispose()
+
+      this.edgeBottom = MeshBuilder.CreatePlane('Edge bottom', {
+        width: sectionSize * ts,
+        height: sectionSize * ts
+      }, this.scene)
+      this.edgeBottom.material = material
+      this.edgeBottom.position.x = sectionSize * ts / 2
+      this.edgeBottom.position.y = -100
+      this.edgeBottom.position.z = sectionSize * ts / 2
+      this.edgeBottom.rotate(Vector3.Right(), -Math.PI / 2)
+
       mesh.checkCollisions = true
       mesh.receiveShadows = true
       this.shadowGenerator.addShadowCaster(mesh)
@@ -379,8 +431,9 @@ export class World {
 
       if (treeBase.length) {
         const c = sectionSize * ts / 2
-        for(let i = 0; i < 500; i++) {
-          const [ x, z ] = [ rnd(c - c / 4, c + c / 4), rnd(c - c / 4, c + c / 4) ]
+        const u = 1
+        for(let i = 0; i < numberOfTrees; i++) {
+          const [ x, z ] = [ rnd(c - c / u, c + c / u), rnd(c - c / u, c + c / u) ]
           const y = sample(x / ts, z / ts)
 
           if (y > -h / 2) {
@@ -405,6 +458,10 @@ export class World {
       }
 
       this.waterMaterial?.addToRenderList(mesh)
+
+      if (this.player) {
+        this.player.player.position.copyFrom(this.startingPoint)
+      }
 
       return mesh
     }
@@ -533,13 +590,13 @@ export class World {
         this.scene.clearColor = new Color4(.5 * .8, 0.7 * .8, .8)
         this.scene.fogColor = new Color3(this.scene.clearColor.r, this.scene.clearColor.g, this.scene.clearColor.b)
         this.scene.ambientColor = new Color3(this.scene.clearColor.r, this.scene.clearColor.g, this.scene.clearColor.b)
-        this.scene.fogDensity = .125
+        this.scene.fogDensity = .1
         this.skybox.skybox.applyFog = true
       } else {
         this.scene.clearColor = this.clearColor
         this.scene.fogColor = new Color3(this.scene.clearColor.r, this.scene.clearColor.g, this.scene.clearColor.b)
         this.scene.ambientColor = new Color3(this.scene.clearColor.r, this.scene.clearColor.g, this.scene.clearColor.b)
-        this.scene.fogDensity = .0015
+        this.scene.fogDensity = .001 / 100
         this.skybox.skybox.applyFog = false
       }
     }
@@ -551,5 +608,60 @@ export class World {
     } else {
       return 1 - Math.pow(1 - ((value - .5) * 2), 2) / 2
     }
+  }
+
+  private buildEdgeMesh(vertexData: VertexData, sectionSize: number, material: Material): Mesh {
+    const mesh = new Mesh('Edge', this.scene)
+    mesh.material = material
+
+    const vertices = sectionSize * 4 + 3
+    const positions = new Float32Array(vertices * 6)
+    const indices = [] as Array<number>
+    const normals = [] as Array<number>
+
+    const perimeter = [
+      ...new Array(sectionSize + 1).fill(0).map((v, i) => [i, 0]),
+      ...new Array(sectionSize).fill(0).map((v, i) => [sectionSize, i + 1]),
+      ...new Array(sectionSize + 1).fill(0).map((v, i) => [sectionSize - i, sectionSize]),
+      ...new Array(sectionSize).fill(0).map((v, i) => [0, sectionSize - i - 1])
+    ]
+
+    for (let index = 0; index < perimeter.length; index++) {
+      const p = perimeter[index]
+      const i = (p[1] * (sectionSize + 1) + p[0]) * 3
+
+      positions[index * 6] = vertexData.positions!![i]
+      positions[index * 6 + 1] = vertexData.positions!![i + 1]
+      positions[index * 6 + 2] = vertexData.positions!![i + 2]
+      positions[index * 6 + 3] = vertexData.positions!![i]
+      positions[index * 6 + 3 + 1] = -100
+      positions[index * 6 + 3 + 2] = vertexData.positions!![i + 2]
+    }
+
+    for (let i = 0; i < vertices * 2 - 3 - 1; i += 1) {
+      if (i % 2 == 0) {
+        indices.push(
+          i,
+          i + 1,
+          i + 2
+        )
+      } else {
+        indices.push(
+          i + 2,
+          i + 1,
+          i
+        )
+      }
+    }
+
+    const vd = new VertexData()
+    vd.positions = positions
+    vd.indices = indices
+    vd.normals = normals
+
+    VertexData.ComputeNormals(positions, indices, normals)
+    vd.applyToMesh(mesh, true)
+
+    return mesh
   }
 }
