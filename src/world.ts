@@ -73,7 +73,7 @@ export class World {
   }
 
   constructor(private scene: Scene, private ui: Ui, engine: Engine, canvas: HTMLCanvasElement) {
-    const cameraMaxZ = 5000 // 500
+    const cameraMaxZ = 1000 // 500
 
     scene.fogMode = Scene.FOGMODE_EXP2
     scene.fogDensity = .001
@@ -92,7 +92,7 @@ export class World {
 
     this.camera = new ArcRotateCamera('Camera', Math.PI / 2, Math.PI / 2, this.cameraTargetRadius, Vector3.Zero(), scene)
     this.camera.attachControl(canvas, true, true)
-    this.camera.upperRadiusLimit = 2500
+    this.camera.upperRadiusLimit = 250
     this.camera.lowerRadiusLimit = 2.5
     this.camera.upperBetaLimit = Math.PI / 2 + Math.PI / 4
     this.camera.fov = .5//1.333
@@ -293,79 +293,63 @@ export class World {
     waterEdgesMaterial.alphaMode = Material.MATERIAL_ALPHABLEND
     waterEdgesMaterial.zOffset = 2
 
-    const sectionSize = 100
+    const sectionSize = 10
     const ts = 10
     const numberOfTrees = sectionSize * ts
 
     const createGround = (xOffset: number, zOffset: number, seedOffset = 0) => {
+      const mix = (a: number, b: number, factor: number) => a * (1 - factor) + b * factor
 
       const positions = new Float32Array((sectionSize + 1) * (sectionSize + 1) * 3)
       const indices = [] as Array<number>
       const normals = [] as Array<number>
 
-      const entropy = new Entropy(4 * 10 / ts, 4 + seedOffset)
-      const entropy2 = new Entropy(32 * 10 / ts, 512 + seedOffset)
-      const groundEntropy = new Entropy(8 * 10 / ts, 8 + seedOffset)
-      const riverEntropy = new Entropy(64 * 10 / ts, 64 + seedOffset)
-
       const rnd = randn.factory({ seed: 1 + seedOffset })
 
-      const h = rnd(16, 64)
-      const f1 = rnd(16, 32) * (rnd(0, 1) > .5 ? -1 : 1)
-      const f2 = rnd(8, 16) * (rnd(0, 1) > .5 ? -1 : 1)
-      const f3 = rnd(1.5, 3)
-      const f4 = rnd(2, 16)
-      const water = rnd(.125, .5)
+      const rH = rnd(.25, .5)
+      const rW = 1 / rnd(8, 32)
 
-      console.log(h, f1, f2, f3, water)
+      const entropies = [
+        new Entropy(rnd(64, 128) / ts, 512 + seedOffset),
+        new Entropy(rnd(32, 64) / ts, 8 + seedOffset),
+        new Entropy(rnd(16, 32) / ts, 4 + seedOffset),
+        new Entropy(rnd(8, 16) / ts, 84 + seedOffset),
+        new Entropy(rnd(64, 256) / ts, 64 + seedOffset)
+      ]
 
-      this.water?.dispose()
+      const r = [
+        rnd(1 / 8, 8),
+        rnd(1 / 8, 8),
+        rnd(1 / 8, 8),
+        rnd(1 / 8, 8)
+      ]
 
-      this.water = MeshBuilder.CreatePlane('Water', {
-        width: sectionSize * ts,
-        height: sectionSize * ts
-      }, this.scene)
-      this.water.position.x = sectionSize * ts / 2
-      this.water.position.y = -32
-      this.water.position.z = sectionSize * ts / 2
-      this.water.rotate(Vector3.Right(), Math.PI / 2)
+      const smootherstep = (x: number) => Math.max(0, Math.min(1, x * x * x * (x * (x * 6 - 15) + 10)))
 
-      this.waterEdges?.dispose()
-      this.waterEdges = MeshBuilder.CreateCylinder('Water edges', {
-        diameter: sectionSize * ts / Math.SQRT1_2,
-        height: 100 - 32,
-        cap: Mesh.NO_CAP,
-        tessellation: 4
-      }, this.scene)
-      this.waterEdges.position.x = sectionSize * ts / 2
-      this.waterEdges.position.y = -32 - (100 - 32) / 2
-      this.waterEdges.position.z = sectionSize * ts / 2
-      this.waterEdges.rotate(Vector3.Up(), Math.PI / 4)
-      this.waterEdges.material = waterEdgesMaterial
-      this.waterEdges.alphaIndex = 0
+      const transforms = [
+        (c: number, x: number) => c + x ** r[0],
+        (c: number, x: number) => c + x ** r[1] / (2 ** 1),
+        (c: number, x: number) => c + x ** r[2] / (2 ** 2),
+        (c: number, x: number) => c + x ** r[3] / (2 ** 3),
+        (c: number, x: number) => c < -rH / 8 ? c : (c * (smootherstep(Math.min(rW, Math.abs(x - rH)) / rW))),// / (2 ** 4)
+      ]
 
-
-      if (this.waterMaterial) {
-        this.water.material = this.waterMaterial
-      }
-
-      const mix = (a: number, b: number, factor: number) => a * (1 - factor) + b * factor
+      const h1 = rnd(1, 20) // Max hill height
+      const h2 = rnd(-10, -1) // Max underwater depth
 
       const sample = (x: number, z: number) => {
-        // return entropy.sample(x, z) * 12
+        const e = entropies
+          .map((v, i) => v.sample(x, z))
+          .reduce((a, b, i) => transforms[i](a, b))
 
-        const v = Math.min(groundEntropy.sample(x, z), Math.pow(entropy2.sample(x, z), f3)) - groundEntropy.sample(x, z) / f1 + entropy.sample(x, z) / f2
-        const rH = .5
-        const rW = 1 / f4
-        const river = 1 - Math.pow(Math.min(rW, Math.abs(riverEntropy.sample(x, z) - rH)) / rW, 4)
-
-        return mix((v < water ? Math.pow(groundEntropy.sample(x, z), .5) * (h / 16) : entropy.sample(x, z) * Math.pow((v - .5) * (1 / water), 2)) * (h / 8) +
-          (Math.max(water, v) - .5) * (1 / water) * h, -32 - f4 * groundEntropy.sample(x, z), river)
+        return mix(h2, h1, e)
       }
 
       this.startingPoint.x = sectionSize * ts / 2
       this.startingPoint.z = sectionSize * ts / 2
       this.startingPoint.y = sample(this.startingPoint.x / ts, this.startingPoint.z / ts)
+
+      let deepestDepth = -sectionSize
 
       const mesh = new Mesh('Ground', this.scene)
       mesh.material = groundMaterial
@@ -376,6 +360,8 @@ export class World {
           positions[i] = x * ts
           positions[i + 1] = sample(x, z)
           positions[i + 2] = z * ts
+
+          deepestDepth = Math.min(positions[i + 1] - 10, deepestDepth)
         }
       }
 
@@ -409,7 +395,7 @@ export class World {
       material.baseColor = groundMaterial.baseColor.scale(.5)
 
       this.edgeMesh?.dispose()
-      this.edgeMesh = this.buildEdgeMesh(vertexData, sectionSize, material)
+      this.edgeMesh = this.buildEdgeMesh(deepestDepth, vertexData, sectionSize, material)
 
       this.edgeBottom?.dispose()
 
@@ -419,7 +405,7 @@ export class World {
       }, this.scene)
       this.edgeBottom.material = material
       this.edgeBottom.position.x = sectionSize * ts / 2
-      this.edgeBottom.position.y = -100
+      this.edgeBottom.position.y = deepestDepth
       this.edgeBottom.position.z = sectionSize * ts / 2
       this.edgeBottom.rotate(Vector3.Right(), -Math.PI / 2)
 
@@ -436,7 +422,7 @@ export class World {
           const [ x, z ] = [ rnd(c - c / u, c + c / u), rnd(c - c / u, c + c / u) ]
           const y = sample(x / ts, z / ts)
 
-          if (y > -h / 2) {
+          if (y > h1 / 8) {
             const s = rnd(0.8, 1.2)
             const r = rnd(0, Math.PI * 2)
 
@@ -455,6 +441,35 @@ export class World {
             })
           }
         }
+      }
+
+      this.water?.dispose()
+
+      this.water = MeshBuilder.CreatePlane('Water', {
+        width: sectionSize * ts,
+        height: sectionSize * ts
+      }, this.scene)
+      this.water.position.x = sectionSize * ts / 2
+      this.water.position.y = 0
+      this.water.position.z = sectionSize * ts / 2
+      this.water.rotate(Vector3.Right(), Math.PI / 2)
+
+      this.waterEdges?.dispose()
+      this.waterEdges = MeshBuilder.CreateCylinder('Water edges', {
+        diameter: sectionSize * ts / Math.SQRT1_2,
+        height: -deepestDepth,
+        cap: Mesh.NO_CAP,
+        tessellation: 4
+      }, this.scene)
+      this.waterEdges.position.x = sectionSize * ts / 2
+      this.waterEdges.position.y = deepestDepth / 2
+      this.waterEdges.position.z = sectionSize * ts / 2
+      this.waterEdges.rotate(Vector3.Up(), Math.PI / 4)
+      this.waterEdges.material = waterEdgesMaterial
+      this.waterEdges.alphaIndex = 0
+
+      if (this.waterMaterial) {
+        this.water.material = this.waterMaterial
       }
 
       this.waterMaterial?.addToRenderList(mesh)
@@ -596,7 +611,7 @@ export class World {
         this.scene.clearColor = this.clearColor
         this.scene.fogColor = new Color3(this.scene.clearColor.r, this.scene.clearColor.g, this.scene.clearColor.b)
         this.scene.ambientColor = new Color3(this.scene.clearColor.r, this.scene.clearColor.g, this.scene.clearColor.b)
-        this.scene.fogDensity = .001 / 100
+        this.scene.fogDensity = .001
         this.skybox.skybox.applyFog = false
       }
     }
@@ -610,7 +625,7 @@ export class World {
     }
   }
 
-  private buildEdgeMesh(vertexData: VertexData, sectionSize: number, material: Material): Mesh {
+  private buildEdgeMesh(depth: number, vertexData: VertexData, sectionSize: number, material: Material): Mesh {
     const mesh = new Mesh('Edge', this.scene)
     mesh.material = material
 
@@ -634,7 +649,7 @@ export class World {
       positions[index * 6 + 1] = vertexData.positions!![i + 1]
       positions[index * 6 + 2] = vertexData.positions!![i + 2]
       positions[index * 6 + 3] = vertexData.positions!![i]
-      positions[index * 6 + 3 + 1] = -100
+      positions[index * 6 + 3 + 1] = depth
       positions[index * 6 + 3 + 2] = vertexData.positions!![i + 2]
     }
 

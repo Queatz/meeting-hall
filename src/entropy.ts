@@ -22,18 +22,6 @@ export class Entropy {
       z / this.scale - origin[1]
     ]
 
-    const pos = [
-      x / this.scale,
-      z / this.scale
-    ]
-
-    const values = [
-      this.sampleRaw(origin[0], origin[1]),
-      this.sampleRaw(origin[0] + 1, origin[1]),
-      this.sampleRaw(origin[0], origin[1] + 1),
-      this.sampleRaw(origin[0] + 1, origin[1] + 1)
-    ]
-
     const dots = [
       this.sampleDot(origin[0], origin[1]),
       this.sampleDot(origin[0] + 1, origin[1]),
@@ -42,7 +30,7 @@ export class Entropy {
     ].map(x => new Vector2(Math.cos(x), Math.sin(x)))
 
     const mix = (a: number, b: number, v: number) => (a * (1 - v) + b * v)
-    const smootherstep = (x: number) => x * x * x * (x * (x * 6 - 15) + 10)
+    const smootherstep = (x: number) => Math.max(0, Math.min(1, x * x * x * (x * (x * 6 - 15) + 10)))
     const gradient = (x: number, y: number, a: Vector2) => (x * a.x + y * a.y) // todo use Vector2.Dot
 
     return (mix(
@@ -57,7 +45,7 @@ export class Entropy {
         smootherstep(factor[0])
       ),
       smootherstep(factor[1])
-    ) + 1) / 2
+    ) + Math.SQRT1_2) / Math.SQRT2
   }
 
   private sampleRaw(x: number, z: number): number {

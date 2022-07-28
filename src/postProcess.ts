@@ -35,6 +35,14 @@ export class PostProcess {
     // pipeline.samples = 4
     // pipeline.fxaaEnabled = true
 
+    if (quality == -1) {
+      pipeline.bloomEnabled = true
+      pipeline.bloomThreshold = .333
+      pipeline.bloomWeight = 1
+      pipeline.bloomKernel = 256
+      pipeline.bloomScale = .125
+    }
+
     if (quality >= 1) {
       // pipeline.imageProcessingEnabled = true
       // pipeline.grainEnabled = true
@@ -48,12 +56,6 @@ export class PostProcess {
       // pipeline.imageProcessing.contrast = 1.5
       // pipeline.imageProcessing.toneMappingEnabled = true
       // pipeline.imageProcessing.toneMappingType = TonemappingOperator.Photographic
-
-      // pipeline.bloomEnabled = true
-      // pipeline.bloomThreshold = .6
-      // pipeline.bloomWeight = .5
-      // pipeline.bloomKernel = 96
-      // pipeline.bloomScale = .2
 
       this.godrays = new VolumetricLightScatteringPostProcess(
         'godrays',
