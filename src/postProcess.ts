@@ -37,8 +37,8 @@ export class PostProcess {
 
     if (quality == -1) {
       pipeline.bloomEnabled = true
-      pipeline.bloomThreshold = .333
-      pipeline.bloomWeight = 1
+      pipeline.bloomThreshold = .5//.333
+      pipeline.bloomWeight = .5
       pipeline.bloomKernel = 256
       pipeline.bloomScale = .125
     }
@@ -108,7 +108,7 @@ export class PostProcess {
     }
 
     if (quality < 0) {
-      const pixels = 1
+      const pixels = 1// / 3
 
       this.renderer = scene.enableDepthRenderer(camera)
        this.renderer.forceDepthWriteTransparentMeshes = true
@@ -133,7 +133,7 @@ export class PostProcess {
       outline.threshold = 0.05
       outline.depthThreshold = 0.001
       outline.edgeAmount = 4
-      outline.edgeOffset = 1.25
+      outline.edgeOffset = 1
 
       // const pp = new ScreenSpaceCurvaturePostProcess("Post", scene, 1, camera)
       // pp.valley = 8

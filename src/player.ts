@@ -135,5 +135,14 @@ export class Player {
     if (ray.hit) {
       this.player.position.y = ray.pickedPoint!.y
     }
+
+    if (this.world.water) {
+      const p = this.player.position.add(new Vector3(0, 1, 0))
+      const ray = new Ray(p, Vector3.Up()).intersectsMesh(this.world.water)
+
+      if (ray.hit) {
+        this.player.position.y += (Vector3.Distance(ray.pickedPoint!, p) / 100) * this.scene.deltaTime
+      }
+    }
   }
 }

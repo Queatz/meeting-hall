@@ -1,7 +1,7 @@
 import {
   AbstractMesh,
   AnimationGroup,
-  ArcRotateCamera,
+  ArcRotateCamera, ArcRotateCameraKeyboardMoveInput,
   ArcRotateCameraMouseWheelInput,
   BoundingSphere,
   CascadedShadowGenerator,
@@ -15,7 +15,7 @@ import {
   Mesh,
   MeshBuilder,
   MirrorTexture,
-  PBRMaterial, PBRMetallicRoughnessMaterial, PBRSpecularGlossinessMaterial,
+  PBRMaterial, PBRMetallicRoughnessMaterial, PBRSpecularGlossinessMaterial, Quaternion,
   Ray,
   Scene,
   SceneLoader,
@@ -98,10 +98,11 @@ export class World {
     this.camera.fov = .5//1.333
     this.camera.minZ = 1
     this.camera.maxZ = cameraMaxZ
+    // ;(this.camera.inputs.attached['keyboard'] as ArcRotateCameraKeyboardMoveInput).angularSpeed = 0.001
     ;(this.camera.inputs.attached['mousewheel'] as ArcRotateCameraMouseWheelInput).wheelPrecision = 2 // 64
     // ;(this.camera.inputs.attached['mousewheel'] as ArcRotateCameraMouseWheelInput).detachControl()
 
-    this.sun = new DirectionalLight('Sun', new Vector3(-1, -.75, 0).normalize(), scene)
+    this.sun = new DirectionalLight('Sun', new Vector3(-1, -.25, 0).normalize(), scene)
     this.sun.intensity = 1.5
     this.sun.specular = scene.ambientColor
     this.sun.diffuse = scene.ambientColor
@@ -148,9 +149,9 @@ export class World {
 
     this.waterMaterial = new WaterMaterial('Water', scene, new Vector2(1024, 1024).scale(1))
     this.waterMaterial.bumpTexture = new Texture('assets/waterbump.png', scene)
-    ;(this.waterMaterial.bumpTexture as Texture).uScale = 16
-    ;(this.waterMaterial.bumpTexture as Texture).vScale = 16
-    this.waterMaterial.bumpHeight = .125
+    ;(this.waterMaterial.bumpTexture as Texture).uScale = 1
+    ;(this.waterMaterial.bumpTexture as Texture).vScale = 1
+    this.waterMaterial.bumpHeight = .25
     this.waterMaterial.bumpSuperimpose = true
     this.waterMaterial.waveHeight = 0//.1
     this.waterMaterial.waveLength = .5
@@ -161,13 +162,19 @@ export class World {
     this.waterMaterial.waterColor = Color3.White()//new Color3(.9, 1, .8)
     this.waterMaterial.bumpAffectsReflection = true
     this.waterMaterial.backFaceCulling = false
+    this.waterMaterial.specularColor = Color3.White().scale(.5)
+    this.waterMaterial.specularPower = 1024
     this.waterMaterial.addToRenderList(this.skybox.skybox)
 
     const generateWorld = true
 
     if (generateWorld) {
       SceneLoader.LoadAssetContainerAsync('/assets/', 'forest.glb', scene).then((result: ISceneLoaderAsyncResult) => {
-        this.setupWorld(result.meshes.filter(x => x.name.startsWith('Pine 1_')))
+        this.setupWorld([
+          [result.meshes.filter(x => x.name.startsWith('Pine 1_')), 1],
+          [result.meshes.filter(x => x.name.startsWith('Small tree.022_')), 2],
+          [result.meshes.filter(x => x.name.startsWith('Fern.029')), 8],
+        ])
 
         result.animationGroups.forEach((anim: AnimationGroup) => {
           anim.start(true)
@@ -278,7 +285,7 @@ export class World {
     })
   }
 
-  setupWorld(treeBase: Array<AbstractMesh>) {
+  setupWorld(treeBases: Array<[Array<AbstractMesh>, number]>) {
     const groundMaterial = new PBRMetallicRoughnessMaterial('Ground', this.scene)
     groundMaterial.backFaceCulling = false
     groundMaterial.baseColor = new Color3(.45, .4, .25)
@@ -293,9 +300,9 @@ export class World {
     waterEdgesMaterial.alphaMode = Material.MATERIAL_ALPHABLEND
     waterEdgesMaterial.zOffset = 2
 
-    const sectionSize = 10
-    const ts = 10
-    const numberOfTrees = sectionSize * ts
+    const sectionSize = 100
+    const ts = 1
+    const numberOfTrees = sectionSize * ts * 2
 
     const createGround = (xOffset: number, zOffset: number, seedOffset = 0) => {
       const mix = (a: number, b: number, factor: number) => a * (1 - factor) + b * factor
@@ -415,7 +422,11 @@ export class World {
 
       // Trees
 
-      if (treeBase.length) {
+      // todo interpolate tree location on triangle, not smooth
+
+      const factors = treeBases.map(x => x[1]).reduce((a, b) => a + b)
+
+      if (treeBases.length) {
         const c = sectionSize * ts / 2
         const u = 1
         for(let i = 0; i < numberOfTrees; i++) {
@@ -426,15 +437,18 @@ export class World {
             const s = rnd(0.8, 1.2)
             const r = rnd(0, Math.PI * 2)
 
+            const choice = Math.floor(rnd(0, factors)) / treeBases.length
+            const treeBase = (treeBases.find(x => choice < x[1])??treeBases[0])[0]
+
             treeBase.forEach((mesh, index) => {
               mesh.receiveShadows = true
 
               const tree = (mesh as Mesh).createInstance('Tree')
               this.scene.addMesh(tree)
-              tree.position.copyFrom(new Vector3(x, y - .5, z))
+              tree.position.copyFrom(new Vector3(x, y, z))
               this.mapObjects.push(tree)
               tree.checkCollisions = index === 0
-              tree.scaling.scale(s)
+              tree.scaling = Vector3.One().scale(s)
               tree.rotate(Vector3.Up(), r)
               this.shadowGenerator.addShadowCaster(tree)
               this.waterMaterial?.addToRenderList(tree)

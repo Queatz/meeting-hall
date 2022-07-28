@@ -19,7 +19,7 @@ export class Sky {
     const skyboxMaterial = new PBRMaterial('skyBox', scene)
     skyboxMaterial.emissiveTexture = new Texture('assets/skybox.png', scene, undefined, false, Texture.NEAREST_SAMPLINGMODE)
     skyboxMaterial.emissiveColor = new Color3(this.scene.clearColor.r, this.scene.clearColor.g, this.scene.clearColor.b)
-    skyboxMaterial.emissiveIntensity = 1.1
+    skyboxMaterial.emissiveIntensity = 1.25
     skyboxMaterial.disableLighting = true
     skyboxMaterial.directIntensity = 0
     skyboxMaterial.specularIntensity = 0
