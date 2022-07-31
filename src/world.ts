@@ -1,7 +1,7 @@
 import {
   AbstractMesh,
   AnimationGroup,
-  ArcRotateCamera, ArcRotateCameraKeyboardMoveInput,
+  ArcRotateCamera,
   ArcRotateCameraMouseWheelInput,
   BoundingSphere,
   CascadedShadowGenerator,
@@ -11,16 +11,19 @@ import {
   Engine,
   HemisphericLight,
   ISceneLoaderAsyncResult,
-  KeyboardEventTypes, Material,
+  KeyboardEventTypes,
+  Material,
   Mesh,
   MeshBuilder,
   MirrorTexture,
-  PBRMaterial, PBRMetallicRoughnessMaterial, PBRSpecularGlossinessMaterial, Quaternion,
+  PBRMaterial,
+  PBRMetallicRoughnessMaterial,
   Ray,
   Scene,
   SceneLoader,
   Texture,
-  TransformNode, Vector2,
+  TransformNode,
+  Vector2,
   Vector3,
   VertexData
 } from '@babylonjs/core'
@@ -28,11 +31,11 @@ import { Sky } from './sky'
 import { PostProcess } from './postProcess'
 import { Player } from './player'
 import { Ui } from './ui'
-import { Npc } from "./npc";
-import { Story } from "./story/story";
-import { WaterMaterial } from "@babylonjs/materials";
-import { Entropy } from "./entropy";
-import * as randn from "@stdlib/random-base-uniform";
+import { Npc } from './npc'
+import { Story } from './story/story'
+import { WaterMaterial } from '@babylonjs/materials'
+import { Entropy } from './entropy'
+import * as randn from '@stdlib/random-base-uniform'
 
 export class World {
 
@@ -149,8 +152,6 @@ export class World {
 
     this.waterMaterial = new WaterMaterial('Water', scene, new Vector2(1024, 1024).scale(1))
     this.waterMaterial.bumpTexture = new Texture('assets/waterbump.png', scene)
-    ;(this.waterMaterial.bumpTexture as Texture).uScale = 1
-    ;(this.waterMaterial.bumpTexture as Texture).vScale = 1
     this.waterMaterial.bumpHeight = .25
     this.waterMaterial.bumpSuperimpose = true
     this.waterMaterial.waveHeight = 0//.1
@@ -287,8 +288,9 @@ export class World {
 
   setupWorld(treeBases: Array<[Array<AbstractMesh>, number]>) {
     const groundMaterial = new PBRMetallicRoughnessMaterial('Ground', this.scene)
+    groundMaterial.baseTexture = new Texture('assets/dirt.png', this.scene)
     groundMaterial.backFaceCulling = false
-    groundMaterial.baseColor = new Color3(.45, .4, .25)
+    // groundMaterial.baseColor = new Color3(.45, .4, .25)
     groundMaterial.metallic = 1
     groundMaterial.roughness = 128
 
@@ -302,7 +304,8 @@ export class World {
 
     const sectionSize = 100
     const ts = 1
-    const numberOfTrees = sectionSize * ts * 2
+    const uvScale = .1
+    const numberOfTrees = sectionSize * ts * 2 / 8
 
     const createGround = (xOffset: number, zOffset: number, seedOffset = 0) => {
       const mix = (a: number, b: number, factor: number) => a * (1 - factor) + b * factor
@@ -310,6 +313,7 @@ export class World {
       const positions = new Float32Array((sectionSize + 1) * (sectionSize + 1) * 3)
       const indices = [] as Array<number>
       const normals = [] as Array<number>
+      const uvs = new Float32Array((sectionSize + 1) * (sectionSize + 1) * 2)
 
       const rnd = randn.factory({ seed: 1 + seedOffset })
 
@@ -368,6 +372,10 @@ export class World {
           positions[i + 1] = sample(x, z)
           positions[i + 2] = z * ts
 
+          const uvi = (z * (sectionSize + 1) + x) * 2
+          uvs[uvi] = x / ts * uvScale
+          uvs[uvi + 1] = z / ts * uvScale
+
           deepestDepth = Math.min(positions[i + 1] - 10, deepestDepth)
         }
       }
@@ -394,12 +402,13 @@ export class World {
       vertexData.positions = positions
       vertexData.indices = indices
       vertexData.normals = normals
+      vertexData.uvs = uvs
 
       VertexData.ComputeNormals(positions, indices, normals)
       vertexData.applyToMesh(mesh, true)
 
       const material = new PBRMetallicRoughnessMaterial('Edge', this.scene)
-      material.baseColor = groundMaterial.baseColor.scale(.5)
+      material.baseColor = new Color3(.45, .4, .25).scale(.5)
 
       this.edgeMesh?.dispose()
       this.edgeMesh = this.buildEdgeMesh(deepestDepth, vertexData, sectionSize, material)
@@ -421,6 +430,8 @@ export class World {
       this.shadowGenerator.addShadowCaster(mesh)
 
       // Trees
+
+      this.meshes.length = 0
 
       // todo interpolate tree location on triangle, not smooth
 
@@ -452,6 +463,7 @@ export class World {
               tree.rotate(Vector3.Up(), r)
               this.shadowGenerator.addShadowCaster(tree)
               this.waterMaterial?.addToRenderList(tree)
+              this.meshes.push(tree)
             })
           }
         }
@@ -483,6 +495,8 @@ export class World {
       this.waterEdges.alphaIndex = 0
 
       if (this.waterMaterial) {
+        ;(this.waterMaterial.bumpTexture as Texture).uScale = ts
+        ;(this.waterMaterial.bumpTexture as Texture).vScale = ts
         this.water.material = this.waterMaterial
       }
 
@@ -491,6 +505,8 @@ export class World {
       if (this.player) {
         this.player.player.position.copyFrom(this.startingPoint)
       }
+
+      this.addSmallHouses(mesh)
 
       return mesh
     }
@@ -580,7 +596,7 @@ export class World {
     const t = this.player.player.position.add(new Vector3(0, 2, 0))
     const d = Vector3.Distance(this.camera.position, t)
     const dir = this.camera.position.subtract(t).normalize()
-    const ray = new Ray(t, dir, d)
+    const ray = new Ray(this.camera.position, dir, Math.min(10, d))
     const hits = ray.intersectsMeshes(this.meshes)
 
     if (this.scene.deltaTime > 0) {
@@ -588,7 +604,7 @@ export class World {
         this.camera.setPosition(Vector3.Lerp(this.camera.position, hits[0]!.pickedPoint!.subtract(dir), .005 * this.scene.deltaTime))
         this.timeSinceCameraHit = 0
       } else {
-        const ray = new Ray(t, dir, this.cameraTargetRadius)
+        const ray = new Ray(t, dir, Math.min(10, this.cameraTargetRadius))
         const hits = ray.intersectsMeshes(this.meshes)
 
         if (hits?.[0]?.hit) {
@@ -692,5 +708,42 @@ export class World {
     vd.applyToMesh(mesh, true)
 
     return mesh
+  }
+
+  private addSmallHouses(ground: Mesh) {
+    const bb = ground.getBoundingInfo().boundingBox
+
+    SceneLoader.LoadAssetContainerAsync('/assets/', 'small house.glb', this.scene).then((result: ISceneLoaderAsyncResult) => {
+      const mesh = Mesh.MergeMeshes(
+        result.meshes.filter(x => x.name !== '__root__') as Array<Mesh>,
+        true,
+        true,
+        undefined,
+        undefined,
+        true
+      )!
+
+      this.scene.removeMesh(mesh)
+
+      for(let i = 0; i < Math.floor(Math.random() * 20); i++) {
+        const position = new Vector3()
+        position.x = randn(bb.minimumWorld.x, bb.maximumWorld.x)
+        position.z = randn(bb.minimumWorld.z, bb.maximumWorld.z)
+        position.y = new Ray(new Vector3(position.x, bb.maximumWorld.y, position.z), Vector3.Down(), bb.extendSize.y).intersectsMesh(ground).pickedPoint?.y || 0
+
+        if (position.y <= 0) continue
+
+        const house = mesh.createInstance('House')
+        house.rotate(Vector3.Up(), Math.PI * 2 * Math.random())
+        house.position.copyFrom(position)
+
+        house.checkCollisions = true
+
+        this.waterMaterial?.addToRenderList(house)
+        this.shadowGenerator.addShadowCaster(house)
+        this.mapObjects.push(house)
+        this.meshes.push(house)
+      }
+    })
   }
 }
