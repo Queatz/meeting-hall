@@ -289,9 +289,13 @@ export class World {
   setupWorld(treeBases: Array<[Array<AbstractMesh>, number]>) {
     const groundMaterial = new PBRMetallicRoughnessMaterial('Ground', this.scene)
     groundMaterial.baseTexture = new Texture('assets/dirt.png', this.scene)
+    // groundMaterial.normalTexture = new Texture('assets/waterbump.png', this.scene)
+    // groundMaterial.normalTexture.scale(10)
+    // ;(groundMaterial.normalTexture as Texture).uScale = 2
+    // ;(groundMaterial.normalTexture as Texture).vScale = 2
     groundMaterial.backFaceCulling = false
     // groundMaterial.baseColor = new Color3(.45, .4, .25)
-    groundMaterial.metallic = 1
+    groundMaterial.metallic = 0
     groundMaterial.roughness = 128
 
     const waterEdgesMaterial = new PBRMetallicRoughnessMaterial('Water edges', this.scene)
@@ -511,7 +515,7 @@ export class World {
       return mesh
     }
 
-    this.ground = createGround(0, 0) //6126
+    this.ground = createGround(0, 0, Math.floor(Math.random() * 6126))
 
     // for (let b = -1; b <= 1; b += 2) {
     //   for (let a = -1; a <= 1; a += 2) {
