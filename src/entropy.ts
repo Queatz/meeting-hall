@@ -1,5 +1,5 @@
 import * as randn from '@stdlib/random-base-uniform'
-import { Vector2 } from "@babylonjs/core";
+import { Vector2 } from "@babylonjs/core"
 
 export class Entropy {
 

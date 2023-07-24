@@ -307,9 +307,9 @@ export class World {
     waterEdgesMaterial.zOffset = 2
 
     const sectionSize = 100
-    const ts = 1
+    const ts = 2
     const uvScale = .1
-    const numberOfTrees = sectionSize * ts * 2 / 8
+    const numberOfTrees = sectionSize * ts * 2 / 8 * 8
 
     const createGround = (xOffset: number, zOffset: number, seedOffset = 0) => {
       const mix = (a: number, b: number, factor: number) => a * (1 - factor) + b * factor
