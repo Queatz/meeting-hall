@@ -67,7 +67,7 @@ export class OutlinePostProcess extends PostProcess {
   public depthThreshold: number = 0.005
 
   @serialize()
-  public edgeAmount: number = 1.0
+  public edgeAmount: number = 2.0
 
   @serialize()
   public edgeOffset: number = 1.0

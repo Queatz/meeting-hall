@@ -11,6 +11,7 @@ class App {
     canvas.style.width = '100%'
     canvas.style.height = '100%'
     canvas.id = 'gameCanvas'
+    canvas.style.imageRendering = 'pixelated'
     document.body.appendChild(canvas)
 
     setTimeout(() => canvas.focus())

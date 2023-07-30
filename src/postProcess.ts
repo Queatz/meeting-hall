@@ -29,7 +29,7 @@ export class PostProcess {
 
   constructor(private scene: Scene, private camera: Camera, engine: Engine, private sunDirection: Vector3, excludeMeshes: Array<AbstractMesh>) {
 
-    const quality = -1
+    const quality = -2 - 0
 
     const pipeline = new DefaultRenderingPipeline('Default Pipeline', true, scene, [ camera ])
     // pipeline.samples = 4
@@ -108,7 +108,7 @@ export class PostProcess {
     }
 
     if (quality < 0) {
-      const pixels = 1// / 3
+      const pixels = 1/3// / 3
 
       this.renderer = scene.enableDepthRenderer(camera)
        this.renderer.forceDepthWriteTransparentMeshes = true
@@ -164,19 +164,20 @@ export class PostProcess {
 
   toggleFilmSimulation(film?: string | null) {
     const luts = [
-      // '',
+      '',
+      'assets/book.png',
       'assets/color.png',
       'assets/colored pencil4-2.png',
       // 'assets/story.png',
       // 'assets/story3.png',
       // 'assets/forest.png',
       // 'assets/forest2.png',
-      // 'assets/book.png',
+      'assets/book.png',
       // 'assets/colored pencil.png',
       // 'assets/lut.png',
       // 'assets/colored pencil3.png',
-      // 'assets/book2.png',
-      // 'assets/bright.png',
+      'assets/book2.png',
+      'assets/bright.png',
     ]
 
     const i = luts.indexOf(this.film?.colorTableUrl || '') + 1

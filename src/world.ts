@@ -98,7 +98,7 @@ export class World {
     this.camera.upperRadiusLimit = 250
     this.camera.lowerRadiusLimit = 2.5
     this.camera.upperBetaLimit = Math.PI / 2 + Math.PI / 4
-    this.camera.fov = .5//1.333
+    this.camera.fov = .25//.5//1.333
     this.camera.minZ = 1
     this.camera.maxZ = cameraMaxZ
     // ;(this.camera.inputs.attached['keyboard'] as ArcRotateCameraKeyboardMoveInput).angularSpeed = 0.001
@@ -296,7 +296,7 @@ export class World {
     groundMaterial.backFaceCulling = false
     // groundMaterial.baseColor = new Color3(.45, .4, .25)
     groundMaterial.metallic = 0
-    groundMaterial.roughness = 128
+    groundMaterial.roughness = 0
 
     const waterEdgesMaterial = new PBRMetallicRoughnessMaterial('Water edges', this.scene)
     waterEdgesMaterial.baseColor = Color3.White().scale(1.25)
@@ -306,10 +306,10 @@ export class World {
     waterEdgesMaterial.alphaMode = Material.MATERIAL_ALPHABLEND
     waterEdgesMaterial.zOffset = 2
 
-    const sectionSize = 100
+    const sectionSize = 50
     const ts = 2
     const uvScale = .1
-    const numberOfTrees = sectionSize * ts * 2 / 8 * 8
+    const numberOfTrees = sectionSize * ts * 2 / 8 * 4
 
     const createGround = (xOffset: number, zOffset: number, seedOffset = 0) => {
       const mix = (a: number, b: number, factor: number) => a * (1 - factor) + b * factor
@@ -333,10 +333,10 @@ export class World {
       ]
 
       const r = [
-        rnd(1 / 8, 8),
-        rnd(1 / 8, 8),
-        rnd(1 / 8, 8),
-        rnd(1 / 8, 8)
+        rnd(1 / 28, 2),
+        rnd(1 / 28, 2),
+        rnd(1 / 28, 2),
+        rnd(1 / 28, 2)
       ]
 
       const smootherstep = (x: number) => Math.max(0, Math.min(1, x * x * x * (x * (x * 6 - 15) + 10)))
@@ -468,6 +468,7 @@ export class World {
               this.shadowGenerator.addShadowCaster(tree)
               this.waterMaterial?.addToRenderList(tree)
               this.meshes.push(tree)
+              ;(tree.material as PBRMaterial).specularIntensity = 0
             })
           }
         }
@@ -727,9 +728,12 @@ export class World {
         true
       )!
 
+      ;(mesh.material as PBRMaterial).specularIntensity = 0
+      ;(mesh.material as PBRMaterial).roughness = 0
+
       this.scene.removeMesh(mesh)
 
-      for(let i = 0; i < Math.floor(Math.random() * 20); i++) {
+      for(let i = 0; i < Math.floor(Math.random() * 10); i++) {
         const position = new Vector3()
         position.x = randn(bb.minimumWorld.x, bb.maximumWorld.x)
         position.z = randn(bb.minimumWorld.z, bb.maximumWorld.z)
@@ -747,6 +751,7 @@ export class World {
         this.shadowGenerator.addShadowCaster(house)
         this.mapObjects.push(house)
         this.meshes.push(house)
+        ;(house.material as PBRMaterial).specularIntensity = 0
       }
     })
   }
